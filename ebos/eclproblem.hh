@@ -482,22 +482,17 @@ public:
         //NB!!!! updateCell values is called before dt is updated to since it is based on the prevois step.
         // this put the model state set values which should be form the
         // prevois step
+        //bool hyst_update =
+        updateHysteresis_();// do not know if thisis correct
         ElementContext elemCtx(this->simulator());
         this->model().updateCellValues(elemCtx, this->simulator().gridManager().gridView() );
+        // invalidate the cache all the time need to key track of possible dependencies of intensive quantites on cellValues
+        this->model().invalidateIntensiveQuantitiesCache(/*timeIdx=*/0);
 
         if (nextEpisodeIdx < numReportSteps) {
             simulator.startNextEpisode(episodeLength);
             simulator.setTimeStepSize(dt);
         }
-
-
-
-        if (updateHysteresis_())
-            this->model().invalidateIntensiveQuantitiesCache(/*timeIdx=*/0);
-        // NB update MaxOilSaturation is called here instead of endEpisode to get correct output for the lagged evalauation
-        // used in eclipse
-        //this->model().updateMaxOilSaturations();// this should be removed when cellValues is properly functions
-
 
         if (GET_PROP_VALUE(TypeTag, EnablePolymer))
             updateMaxPolymerAdsorption_();

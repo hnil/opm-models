@@ -481,7 +481,7 @@ public:
             Scalar po = (*this)[Indices::pressureSwitchIdx];
             Scalar So = 1.0 - Sw - solventSaturation();
             Scalar SoMax = problem.model().cellValues(globalDofIdx,Model::soMax);
-            //Scalar SoMax = std::max(So, SoMax_prev);
+            //SoMax = std::max(So, SoMax);
             Scalar RsSat =
                 FluidSystem::oilPvt().saturatedGasDissolutionFactor(pvtRegionIdx_, T, po, So, SoMax);
             Scalar RsMax = RsSat;
