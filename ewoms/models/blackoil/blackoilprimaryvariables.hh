@@ -300,7 +300,7 @@ public:
                 (*this)[compositionSwitchIdx] = FsToolbox::value(fluidState.saturation(gasPhaseIdx));
         }
         else if (primaryVarsMeaning() == Sw_po_Rs) {
-            const auto& Rs = Opm::BlackOil::getRs_<FluidSystem, Scalar, FluidState>(fluidState, pvtRegionIdx_);
+            const auto& Rs = Opm::BlackOil::getRs_<FluidSystem, FluidState, Scalar>(fluidState, pvtRegionIdx_);
 
             if (waterEnabled)
                 (*this)[waterSaturationIdx] = FsToolbox::value(fluidState.saturation(waterPhaseIdx));
@@ -311,7 +311,7 @@ public:
         else {
             assert(primaryVarsMeaning() == Sw_pg_Rv);
 
-            const auto& Rv = Opm::BlackOil::getRv_<FluidSystem, Scalar, FluidState>(fluidState, pvtRegionIdx_);
+            const auto& Rv = Opm::BlackOil::getRv_<FluidSystem, FluidState, Scalar>(fluidState, pvtRegionIdx_);
             if (waterEnabled)
                 (*this)[waterSaturationIdx] = FsToolbox::value(fluidState.saturation(waterPhaseIdx));
 
@@ -461,7 +461,7 @@ public:
                                                                     SoMax);
 
             Scalar Rs = (*this)[Indices::compositionSwitchIdx];
-            if (Rs > (1.0 + eps)*std::min(RsMax, RsSat)) {
+            if (Rs > std::min(RsMax, RsSat*(1.0 + eps))) {
                 // the gas phase appears, i.e., switch the primary variables to { Sw, po,
                 // Sg }.
                 setPrimaryVarsMeaning(Sw_po_Sg);
@@ -518,7 +518,7 @@ public:
                                                                      SoMax);
 
             Scalar Rv = (*this)[Indices::compositionSwitchIdx];
-            if (Rv > (1.0 + eps)*std::min(RvMax, RvSat)) {
+            if (Rv > std::min(RvMax, RvSat*(1.0 + eps))) {
                 // switch to phase equilibrium mode because the oil phase appears. here
                 // we also need the capillary pressures to calculate the oil phase
                 // pressure using the gas phase pressure
