@@ -235,8 +235,8 @@ public:
 
     MatrixBlock<Scalar, m, n> transpose() const {
         MatrixBlock<Scalar, m, n> out;
-        for (int i=0; i<n; i++){
-            for (int j=0; j<m; j++){
+        for (size_t i=0; i<n; i++){
+            for (size_t j=0; j<m; j++){
                 out[j][i] = (*this)[i][j];
             }
         }
