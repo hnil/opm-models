@@ -168,10 +168,10 @@ public:
      *
      * This means the spatial domain plus all auxiliary equations.
      */
-    void linearize(LinearizationType linearizationType = LinearizationType())
+    void linearize()
     {
-        linearizeDomain(linearizationType);
-        linearizeAuxiliaryEquations(linearizationType);
+        linearizeDomain();
+        linearizeAuxiliaryEquations();
     }
 
     /*!
@@ -184,7 +184,7 @@ public:
      * The current state of affairs (esp. the previous and the current solutions) is
      * represented by the model object.
      */
-    void linearizeDomain(LinearizationType linearizationType)
+    void linearizeDomain()
     {
         // we defer the initialization of the Jacobian matrix until here because the
         // auxiliary modules usually assume the problem, model and grid to be fully
@@ -194,7 +194,7 @@ public:
 
         int succeeded;
         try {
-            linearize_(linearizationType);
+            linearize_();
             succeeded = 1;
         }
         catch (const std::exception& e)
@@ -224,7 +224,7 @@ public:
      * \brief Linearize the part of the non-linear system of equations that is associated
      *        with the spatial domain.
      */
-    void linearizeAuxiliaryEquations(LinearizationType linearizationType OPM_UNUSED = 0)
+    void linearizeAuxiliaryEquations()
     {
         // flush possible local caches into matrix structure
         jacobian_->commit();
@@ -234,7 +234,7 @@ public:
         for (unsigned auxModIdx = 0; auxModIdx < model.numAuxiliaryModules(); ++auxModIdx) {
             bool succeeded = true;
             try {
-                model.auxiliaryModule(auxModIdx)->linearize(*jacobian_, residual_);//, linearizationType);
+                model.auxiliaryModule(auxModIdx)->linearize(*jacobian_, residual_);
             }
             catch (const std::exception& e) {
                 succeeded = false;
@@ -269,6 +269,14 @@ public:
     GlobalEqVector& residual()
     { return residual_; }
 
+    void setLinearizationType(LinearizationType linearizationType){
+        linearizationType_ = linearizationType;
+    };
+    
+    const LinearizationType& getLinearizationType() const{
+        return linearizationType_;
+    };
+    
     /*!
      * \brief Returns the map of constraint degrees of freedom.
      *
@@ -413,7 +421,7 @@ private:
     }
 
     // linearize the whole system
-    void linearize_(LinearizationType linearizationType)
+    void linearize_()
     {
         resetSystem_();
 
@@ -460,7 +468,7 @@ private:
                     const Element& elem = *elemIt;
                     if (!linearizeNonLocalElements && elem.partitionType() != Dune::InteriorEntity)
                         continue;
-                    linearizeElement_(elem, linearizationType);
+                    linearizeElement_(elem);
                 }
             }
             // If an exception occurs in the parallel block, it won't escape the
@@ -490,7 +498,7 @@ private:
     }
 
     // linearize an element in the interior of the process' grid partition
-    void linearizeElement_(const Element& elem, LinearizationType linearizationType)
+    void linearizeElement_(const Element& elem)
     {
         unsigned threadId = ThreadManager::threadId();
 
@@ -498,7 +506,7 @@ private:
         auto& localLinearizer = model_().localLinearizer(threadId);
 
         // the actual work of linearization is done by the local linearizer class
-        elementCtx->setFocusTimeIndex(linearizationType);
+        elementCtx->setFocusTimeIndex(linearizationType_);
         localLinearizer.linearize(*elementCtx, elem);
 
         // update the right hand side and the Jacobian matrix
@@ -580,6 +588,7 @@ private:
     // the right-hand side
     GlobalEqVector residual_;
 
+    LinearizationType linearizationType_;
 
     std::mutex globalMatrixMutex_;
 };

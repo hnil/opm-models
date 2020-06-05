@@ -332,11 +332,10 @@ public:
                 }
 
                 //
-                LinearizationType linearizationType = LinearizationType();
                 // do the actual linearization
                 linearizeTimer_.start();
-                asImp_().linearizeDomain_(linearizationType);
-                asImp_().linearizeAuxiliaryEquations_(linearizationType);
+                asImp_().linearizeDomain_();
+                asImp_().linearizeAuxiliaryEquations_();
                 linearizeTimer_.stop();
 
                 solveTimer_.start();
@@ -609,14 +608,14 @@ protected:
      * \brief Linearize the global non-linear system of equations associated with the
      *        spatial domain.
      */
-    void linearizeDomain_(LinearizationType linearizationType)
+    void linearizeDomain_()
     {
-        model().linearizer().linearizeDomain(linearizationType);
+        model().linearizer().linearizeDomain();
     }
 
-    void linearizeAuxiliaryEquations_(LinearizationType linearizationType)
+    void linearizeAuxiliaryEquations_()
     {
-        model().linearizer().linearizeAuxiliaryEquations(linearizationType);
+        model().linearizer().linearizeAuxiliaryEquations();
         model().linearizer().finalize();
     }
 
