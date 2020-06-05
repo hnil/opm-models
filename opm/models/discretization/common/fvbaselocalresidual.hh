@@ -163,14 +163,14 @@ public:
         assert(residual.size() == elemCtx.numDof(/*timeIdx=*/0));
 
         residual = 0.0;
-        if(elemCtx.focusTimeIndex()==0){//NB: This is only valid if fluxeterm sis purely implicite, This was nesseary to not get false derivatives form wells in adjiont.
+        if(elemCtx.linearizationType().time == 0){//NB: This is only valid if fluxeterm sis purely implicite, This was nesseary to not get false derivatives form wells in adjiont.
         // evaluate the flux terms
             asImp_().evalFluxes(residual, elemCtx, /*timeIdx=*/0);
         }
         // evaluate the storage and the source terms
 
         asImp_().evalVolumeTerms_(residual, elemCtx);
-        if(elemCtx.focusTimeIndex()==0){//NB: This is only valid if fluxeterm sis purely implicite, This was nesseary to not get false derivatives form wells in adjiont.
+        if(elemCtx.linearizationType().time ==0){//NB: This is only valid if fluxeterm sis purely implicite, This was nesseary to not get false derivatives form wells in adjiont.
         // evaluate the boundary conditions
             asImp_().evalBoundary_(residual, elemCtx, /*timeIdx=*/0);
         }
@@ -581,10 +581,10 @@ protected:
             }
             double dt = elemCtx.simulator().timeStepSize();
             assert(dt > 0);
-            if( !elemCtx.enableStorageCache() or elemCtx.focusTimeIndex()>0){
+            if( !elemCtx.enableStorageCache() or elemCtx.linearizationType().time >0){
                 // Use the implicit Euler time discretization
                 for (unsigned eqIdx = 0; eqIdx < numEq; ++eqIdx) {
-                    if (elemCtx.focusTimeIndex() == 0) {
+                    if (elemCtx.linearizationType().time == 0) {
                         tmp2Der[eqIdx] = Toolbox::value(tmp2Der[eqIdx]);
                     } else {
                         tmp[eqIdx] = Toolbox::value(tmp[eqIdx]);
@@ -596,7 +596,7 @@ protected:
             }else{
                 for (unsigned eqIdx = 0; eqIdx < numEq; ++eqIdx) {
                     // cached storage should only be used in forward mode
-                    assert(elemCtx.focusTimeIndex()==0);
+                    assert(elemCtx.linearizationType().time ==0);
                     tmp[eqIdx] -= tmp2[eqIdx];  
                     tmp[eqIdx] *= scvVolume / dt;
                     
@@ -607,7 +607,7 @@ protected:
 
             // deal with the source term
             //assumes sourceterm is independent of prevois state
-            if(elemCtx.focusTimeIndex()==0){
+            if(elemCtx.linearizationType().time ==0){
                 asImp_().computeSource(sourceRate, elemCtx, dofIdx, /*timeIdx=*/0);
             }
             // if the model uses extensive quantities in its storage term, and we use

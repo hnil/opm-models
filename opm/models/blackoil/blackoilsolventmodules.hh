@@ -53,7 +53,7 @@
 #include <opm/material/common/Exceptions.hpp>
 
 #include <dune/common/fvector.hh>
-
+#include <opm/models/discretization/common/fvbaselinearizer.hh>
 #include <string>
 
 namespace Opm {
@@ -899,11 +899,11 @@ public:
     void solventPreSatFuncUpdate_(const ElementContext& elemCtx,
                                   unsigned dofIdx,
                                   unsigned timeIdx,
-                                  unsigned focustimeIdx)
+                                  LinearizationType linearizationType)
     {
         const PrimaryVariables& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
         auto& fs = asImp_().fluidState_;
-        solventSaturation_ = priVars.makeEvaluation(solventSaturationIdx, timeIdx,focustimeIdx);
+        solventSaturation_ = priVars.makeEvaluation(solventSaturationIdx, timeIdx,linearizationType);
         hydrocarbonSaturation_ = fs.saturation(gasPhaseIdx);
 
         // apply a cut-off. Don't waste calculations if no solvent
@@ -925,7 +925,7 @@ public:
     void solventPostSatFuncUpdate_(const ElementContext& elemCtx,
                                    unsigned dofIdx,
                                    unsigned timeIdx,
-                                   unsigned focustimeidx)
+                                   LinearizationType linearizationType)
     {
         // revert the gas "saturation" of the fluid state back to the saturation of the
         // hydrocarbon gas.
@@ -954,9 +954,9 @@ public:
 
             //oil is the reference phase for pressure
             if (priVars.primaryVarsMeaning() == PrimaryVariables::Sw_pg_Rv)
-                pgMisc = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, focustimeidx);
+                pgMisc = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             else {
-                const Evaluation& po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, focustimeidx);
+                const Evaluation& po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
                 pgMisc = po + (pC[gasPhaseIdx] - pC[oilPhaseIdx]);
             }
 
@@ -1041,7 +1041,7 @@ public:
     void solventPvtUpdate_(const ElementContext& elemCtx,
                            unsigned scvIdx,
                            unsigned timeIdx,
-                           unsigned focustimeidx)
+                           LinearizationType linearizationType)
     {
         const auto& iq = asImp_();
         const auto& fs = iq.fluidState();
@@ -1277,19 +1277,19 @@ public:
     void solventPreSatFuncUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                                   unsigned scvIdx OPM_UNUSED,
                                   unsigned timeIdx OPM_UNUSED,
-                                  unsigned focustimeidx OPM_UNUSED)
+                                  LinearizationType linearizationType OPM_UNUSED)
     { }
 
     void solventPostSatFuncUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                                    unsigned scvIdx OPM_UNUSED,
                                    unsigned timeIdx OPM_UNUSED,
-                                   unsigned focustimeidx OPM_UNUSED )
+                                   LinearizationType linearizationType OPM_UNUSED )
     { }
 
     void solventPvtUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                            unsigned scvIdx OPM_UNUSED,
                            unsigned timeIdx OPM_UNUSED,
-                           unsigned focustimeIdx OPM_UNUSED)
+                           LinearizationType linearizationType OPM_UNUSED)
     { }
 
     const Evaluation& solventSaturation() const
