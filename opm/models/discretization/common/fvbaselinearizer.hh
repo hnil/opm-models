@@ -53,7 +53,11 @@ namespace Opm {
 // forward declarations
 template<class TypeTag>
 class EcfvDiscretization;
-
+struct LinType{
+    enum VarType {all,pressure,sequential};
+    VarType var = all;
+    unsigned time = 0;
+};    
 /*!
  * \ingroup FiniteVolumeDiscretizations
  *
@@ -169,7 +173,7 @@ public:
      *
      * This means the spatial domain plus all auxiliary equations.
      */
-    void linearize(unsigned focusTimeIdx = 0)
+    void linearize(LinType focusTimeIdx = LinType())
     {
         linearizeDomain(focusTimeIdx);
         linearizeAuxiliaryEquations(focusTimeIdx);
