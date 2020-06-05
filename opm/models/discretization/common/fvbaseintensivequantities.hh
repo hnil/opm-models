@@ -68,7 +68,7 @@ public:
     void update(const ElementContext& elemCtx,
                 unsigned dofIdx,
                 unsigned timeIdx,
-                unsigned focusTimeIdx OPM_UNUSED)
+                LinearizationType linearizationType OPM_UNUSED)
     { extrusionFactor_ = elemCtx.problem().extrusionFactor(elemCtx, dofIdx, timeIdx); }
 
     /*!

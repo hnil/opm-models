@@ -29,7 +29,7 @@
 #define EWOMS_FV_BASE_LINEARIZER_HH
 
 #include "fvbaseproperties.hh"
-
+#include "linearizationtype.hh"
 #include <opm/models/parallel/gridcommhandles.hh>
 #include <opm/models/parallel/threadmanager.hh>
 #include <opm/models/parallel/threadedentityiterator.hh>
@@ -52,12 +52,7 @@
 namespace Opm {
 // forward declarations
 template<class TypeTag>
-class EcfvDiscretization;
-struct LinType{
-    enum VarType {all,pressure,sequential};
-    VarType var = all;
-    unsigned time = 0;
-};    
+class EcfvDiscretization;    
 /*!
  * \ingroup FiniteVolumeDiscretizations
  *
@@ -168,15 +163,15 @@ public:
     }
 
     /*!
-     * \brief Linearize the full system of non-linear equations about focusTimeIdx
+     * \brief Linearize the full system of non-linear equations about linearizationType
      * defualt is 0 i.e. current time normally time to be found.
      *
      * This means the spatial domain plus all auxiliary equations.
      */
-    void linearize(LinType focusTimeIdx = LinType())
+    void linearize(LinearizationType linearizationType = LinearizationType())
     {
-        linearizeDomain(focusTimeIdx);
-        linearizeAuxiliaryEquations(focusTimeIdx);
+        linearizeDomain(linearizationType);
+        linearizeAuxiliaryEquations(linearizationType);
     }
 
     /*!
@@ -189,7 +184,7 @@ public:
      * The current state of affairs (esp. the previous and the current solutions) is
      * represented by the model object.
      */
-    void linearizeDomain(unsigned focustimeIndex)
+    void linearizeDomain(LinearizationType linearizationType)
     {
         // we defer the initialization of the Jacobian matrix until here because the
         // auxiliary modules usually assume the problem, model and grid to be fully
@@ -199,7 +194,7 @@ public:
 
         int succeeded;
         try {
-            linearize_(focustimeIndex);
+            linearize_(linearizationType);
             succeeded = 1;
         }
         catch (const std::exception& e)
@@ -229,7 +224,7 @@ public:
      * \brief Linearize the part of the non-linear system of equations that is associated
      *        with the spatial domain.
      */
-    void linearizeAuxiliaryEquations(unsigned focusTimeIdx OPM_UNUSED = 0)
+    void linearizeAuxiliaryEquations(LinearizationType linearizationType OPM_UNUSED = 0)
     {
         // flush possible local caches into matrix structure
         jacobian_->commit();
@@ -239,7 +234,7 @@ public:
         for (unsigned auxModIdx = 0; auxModIdx < model.numAuxiliaryModules(); ++auxModIdx) {
             bool succeeded = true;
             try {
-                model.auxiliaryModule(auxModIdx)->linearize(*jacobian_, residual_);//, focusTimeIdx);
+                model.auxiliaryModule(auxModIdx)->linearize(*jacobian_, residual_);//, linearizationType);
             }
             catch (const std::exception& e) {
                 succeeded = false;
@@ -418,7 +413,7 @@ private:
     }
 
     // linearize the whole system
-    void linearize_(unsigned focustimeindex)
+    void linearize_(LinearizationType linearizationType)
     {
         resetSystem_();
 
@@ -465,7 +460,7 @@ private:
                     const Element& elem = *elemIt;
                     if (!linearizeNonLocalElements && elem.partitionType() != Dune::InteriorEntity)
                         continue;
-                    linearizeElement_(elem, focustimeindex);
+                    linearizeElement_(elem, linearizationType);
                 }
             }
             // If an exception occurs in the parallel block, it won't escape the
@@ -495,7 +490,7 @@ private:
     }
 
     // linearize an element in the interior of the process' grid partition
-    void linearizeElement_(const Element& elem, unsigned focustimeindex)
+    void linearizeElement_(const Element& elem, LinearizationType linearizationType)
     {
         unsigned threadId = ThreadManager::threadId();
 
@@ -503,7 +498,7 @@ private:
         auto& localLinearizer = model_().localLinearizer(threadId);
 
         // the actual work of linearization is done by the local linearizer class
-        elementCtx->setFocusTimeIndex(focustimeindex);
+        elementCtx->setFocusTimeIndex(linearizationType);
         localLinearizer.linearize(*elementCtx, elem);
 
         // update the right hand side and the Jacobian matrix

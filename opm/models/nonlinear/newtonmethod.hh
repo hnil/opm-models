@@ -44,7 +44,8 @@
 #include <dune/common/classname.hh>
 #include <dune/common/version.hh>
 #include <dune/common/parallel/mpihelper.hh>
-
+#include <dune/common/parallel/mpihelper.hh>
+#include <opm/models/discretization/common/linearizationtype.hh>
 #include <iostream>
 #include <sstream>
 
@@ -331,11 +332,11 @@ public:
                 }
 
                 //
-                int focusTimeIdx = 0;
+                LinearizationType linearizationType = LinearizationType();
                 // do the actual linearization
                 linearizeTimer_.start();
-                asImp_().linearizeDomain_(focusTimeIdx);
-                asImp_().linearizeAuxiliaryEquations_(focusTimeIdx);
+                asImp_().linearizeDomain_(linearizationType);
+                asImp_().linearizeAuxiliaryEquations_(linearizationType);
                 linearizeTimer_.stop();
 
                 solveTimer_.start();
@@ -608,14 +609,14 @@ protected:
      * \brief Linearize the global non-linear system of equations associated with the
      *        spatial domain.
      */
-    void linearizeDomain_(int focusTimeIdx)
+    void linearizeDomain_(LinearizationType linearizationType)
     {
-        model().linearizer().linearizeDomain(focusTimeIdx);
+        model().linearizer().linearizeDomain(linearizationType);
     }
 
-    void linearizeAuxiliaryEquations_(int focusTimeIdx)
+    void linearizeAuxiliaryEquations_(LinearizationType linearizationType)
     {
-        model().linearizer().linearizeAuxiliaryEquations(focusTimeIdx);
+        model().linearizer().linearizeAuxiliaryEquations(linearizationType);
         model().linearizer().finalize();
     }
 

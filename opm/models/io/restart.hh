@@ -31,6 +31,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <opm/common/utility/FileSystem.hpp>
+
 namespace Opm {
 
 

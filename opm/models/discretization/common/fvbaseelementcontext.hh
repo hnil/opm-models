@@ -29,7 +29,7 @@
 #define EWOMS_FV_BASE_ELEMENT_CONTEXT_HH
 
 #include "fvbaseproperties.hh"
-
+#include <opm/models/discretization/common/linearizationtype.hh>
 #include <opm/models/utils/alignedallocator.hh>
 
 #include <opm/material/common/Unused.hpp>
@@ -100,7 +100,7 @@ public:
         enableStorageCache_ = simulator.model().enableStorageCache();//EWOMS_GET_PARAM(TypeTag, bool, EnableStorageCache);
         stashedDofIdx_ = -1;
         focusDofIdx_ = -1;
-        focusTimeIdx_ = 0;
+        linearizationType_ = Opm::LinearizationType();
     }
 
     static void *operator new(size_t size)
@@ -269,8 +269,8 @@ public:
      * focused on.
      */
     
-    void setFocusTimeIndex(unsigned timeIdx)
-    { focusTimeIdx_ = timeIdx; }
+    void setFocusTimeIndex(LinearizationType linearizationType)
+    { linearizationType_ = linearizationType; }
 
     /*!
      * \brief Returns the degree of freedom on which the simulator is currently "focused" on
@@ -285,8 +285,8 @@ public:
      *
      * \copydetails setFocusDof()
      */ 
-    unsigned focusTimeIndex() const
-    { return focusTimeIdx_; }
+    LinearizationType linearizationType() const
+    { return linearizationType_; }
 
     /*!
      * \brief Return a reference to the simulator.
@@ -601,7 +601,7 @@ protected:
 #endif
 
         dofVars_[dofIdx].priVars[timeIdx] = priVars;
-        dofVars_[dofIdx].intensiveQuantities[timeIdx].update(/*context=*/asImp_(), dofIdx, timeIdx, focusTimeIdx_);
+        dofVars_[dofIdx].intensiveQuantities[timeIdx].update(/*context=*/asImp_(), dofIdx, timeIdx, linearizationType_);
     }
 
     IntensiveQuantities intensiveQuantitiesStashed_;
@@ -619,7 +619,7 @@ protected:
 
     int stashedDofIdx_;
     int focusDofIdx_;
-    int focusTimeIdx_;
+    LinearizationType linearizationType_;
     bool enableStorageCache_;
 };
 
