@@ -49,7 +49,7 @@
 #include <opm/material/common/Exceptions.hpp>
 
 #include <dune/common/fvector.hh>
-
+#include <opm/models/discretization/common/fvbaselinearizer.hh>
 #include <string>
 
 namespace Opm {
@@ -1044,12 +1044,12 @@ public:
     void polymerPropertiesUpdate_(const ElementContext& elemCtx,
                                   unsigned dofIdx,
                                   unsigned timeIdx,
-                                  unsigned focusTimeIdx)
+                                  LinearizationType linearizationType)
     {
         const PrimaryVariables& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
-        polymerConcentration_ = priVars.makeEvaluation(polymerConcentrationIdx, timeIdx, focusTimeIdx);
+        polymerConcentration_ = priVars.makeEvaluation(polymerConcentrationIdx, timeIdx, linearizationType);
         if (enablePolymerMolarWeight) {
-            polymerMoleWeight_ = priVars.makeEvaluation(polymerMoleWeightIdx, timeIdx, focusTimeIdx);
+            polymerMoleWeight_ = priVars.makeEvaluation(polymerMoleWeightIdx, timeIdx, linearizationType);
         }
         const Scalar cmax = PolymerModule::plymaxMaxConcentration(elemCtx, dofIdx, timeIdx);
 
@@ -1164,7 +1164,7 @@ public:
     void polymerPropertiesUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                                   unsigned scvIdx OPM_UNUSED,
                                   unsigned timeIdx OPM_UNUSED,
-                                  unsigned focusTimeIdxIdx OPM_UNUSED)
+                                  LinearizationType linearizationTypeIdx OPM_UNUSED)
 
     { }
 

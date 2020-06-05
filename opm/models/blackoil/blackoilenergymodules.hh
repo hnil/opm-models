@@ -353,13 +353,13 @@ public:
     void updateTemperature_(const ElementContext& elemCtx,
                             unsigned dofIdx,
                             unsigned timeIdx,
-                            unsigned focusTimeIdx)
+                            LinearizationType linearizationType)
     {
         auto& fs = asImp_().fluidState_;
         const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
 
         // set temperature
-        fs.setTemperature(priVars.makeEvaluation(temperatureIdx, timeIdx, focusTimeIdx));
+        fs.setTemperature(priVars.makeEvaluation(temperatureIdx, timeIdx, linearizationType));
     }
 
     /*!
@@ -421,7 +421,7 @@ public:
     void updateTemperature_(const ElementContext& elemCtx,
                             unsigned dofIdx,
                             unsigned timeIdx,
-                            unsigned focusTimeIdx)
+                            LinearizationType linearizationType)
     {
         if (enableTemperature) {
             // even if energy is conserved, the temperature can vary over the spatial
