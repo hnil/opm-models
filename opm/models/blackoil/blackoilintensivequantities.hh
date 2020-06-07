@@ -121,7 +121,6 @@ public:
 
         const auto& problem = elemCtx.problem();
         const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
-
         asImp_().updateTemperature_(elemCtx, dofIdx, timeIdx, linearizationType);
 
         unsigned globalSpaceIdx = elemCtx.globalSpaceIndex(dofIdx, timeIdx);
@@ -188,15 +187,29 @@ public:
         MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);
 
         //oil is the reference phase for pressure
+        Evaluation ST=-1;// get current value
+        if(linearizationType.type == Opm::LinearizationType::seqtransport){           
+                ST = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
+        }
+        fluidState_.setTotalSaturation(ST);
         if (priVars.primaryVarsMeaning() == PrimaryVariables::Sw_pg_Rv) {
-            const Evaluation& pg = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
-            for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
+            Evaluation pg;
+            if(linearizationType.type == Opm::LinearizationType::seqtransport){              
+                pg = -1;// get current value
+            }else{
+                pg = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
+            }
+             for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
                 if (FluidSystem::phaseIsActive(phaseIdx))
                     fluidState_.setPressure(phaseIdx, pg + (pC[phaseIdx] - pC[gasPhaseIdx]));
         }
-
         else {
-            const Evaluation& po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
+            Evaluation po;
+            if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                po = -1;// get current value
+            }else{
+                po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
+            }            
             for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
                 if (FluidSystem::phaseIsActive(phaseIdx))
                     fluidState_.setPressure(phaseIdx, po + (pC[phaseIdx] - pC[oilPhaseIdx]));
@@ -362,9 +375,15 @@ public:
             porosity_ *= 1.0 + x + 0.5*x*x;
         }
 
+        
         // deal with water induced rock compaction
         porosity_ *= problem.template rockCompPoroMultiplier<Evaluation>(*this, globalSpaceIdx);
 
+        // this line is do things for sequential simulation avoid modifying storage term.
+        porosity_ *= ST;
+        
+
+        
         asImp_().solventPvtUpdate_(elemCtx, dofIdx, timeIdx, linearizationType);
         asImp_().polymerPropertiesUpdate_(elemCtx, dofIdx, timeIdx, linearizationType);
         asImp_().updateEnergyQuantities_(elemCtx, dofIdx, timeIdx, paramCache);
