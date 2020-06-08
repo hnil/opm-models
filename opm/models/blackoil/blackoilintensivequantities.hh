@@ -187,7 +187,7 @@ public:
         MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);
 
         //oil is the reference phase for pressure
-        Evaluation ST=-1;// get current value
+        Evaluation ST=1;// get current value
         if(linearizationType.type == Opm::LinearizationType::seqtransport){           
                 ST = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
         }
@@ -199,7 +199,7 @@ public:
             }else{
                 pg = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             }
-             for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
+            for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
                 if (FluidSystem::phaseIsActive(phaseIdx))
                     fluidState_.setPressure(phaseIdx, pg + (pC[phaseIdx] - pC[gasPhaseIdx]));
         }
