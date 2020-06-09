@@ -170,15 +170,15 @@ public:
         if (enableSolvent)
             So -= priVars.makeEvaluation(Indices::solventSaturationIdx, timeIdx, linearizationType);
 
-        if (FluidSystem::phaseIsActive(waterPhaseIdx))
+        if (FluidSystem::phaseIsActive(waterPhaseIdx)){
             fluidState_.setSaturation(waterPhaseIdx, Sw);
-
-        if (FluidSystem::phaseIsActive(gasPhaseIdx))
+        }
+        if (FluidSystem::phaseIsActive(gasPhaseIdx)){
             fluidState_.setSaturation(gasPhaseIdx, Sg);
-
-        if (FluidSystem::phaseIsActive(oilPhaseIdx))
+        }
+        if (FluidSystem::phaseIsActive(oilPhaseIdx)){
             fluidState_.setSaturation(oilPhaseIdx, So);
-
+        }
         asImp_().solventPreSatFuncUpdate_(elemCtx, dofIdx, timeIdx, linearizationType);
 
         // now we compute all phase pressures
@@ -186,6 +186,17 @@ public:
         const auto& materialParams = problem.materialLawParams(elemCtx, dofIdx, timeIdx);
         MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);
 
+        //NB which index is correct!!
+        if (FluidSystem::phaseIsActive(waterPhaseIdx)){
+            fluidState_.setPc(waterPhaseIdx, pC[waterPhaseIdx]);
+        }
+        if (FluidSystem::phaseIsActive(gasPhaseIdx)){
+            fluidState_.setPc(gasPhaseIdx, pC[gasPhaseIdx]);
+        }
+        if (FluidSystem::phaseIsActive(oilPhaseIdx)){
+            fluidState_.setPc(oilPhaseIdx, pC[oilPhaseIdx]);
+        }
+        
         //oil is the reference phase for pressure
         Evaluation ST=1;// get current value
         if(linearizationType.type == Opm::LinearizationType::seqtransport){           
