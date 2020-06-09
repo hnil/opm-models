@@ -195,7 +195,7 @@ public:
         if (priVars.primaryVarsMeaning() == PrimaryVariables::Sw_pg_Rv) {
             Evaluation pg;
             if(linearizationType.type == Opm::LinearizationType::seqtransport){              
-                pg = -1;// get current value
+                pg = Toolbox::value(fluidState_.pressure(gasPhaseIdx));// get current value assuem this is not updated
             }else{
                 pg = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             }
@@ -206,7 +206,7 @@ public:
         else {
             Evaluation po;
             if(linearizationType.type == Opm::LinearizationType::seqtransport){
-                po = -1;// get current value
+                po = Toolbox::value(fluidState_.pressure(oilPhaseIdx));;// get current value assume this is never updated
             }else{
                 po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             }            

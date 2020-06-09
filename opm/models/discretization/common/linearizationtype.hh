@@ -29,8 +29,8 @@
 #define EWOMS_FV_BASE_LINEARIZATIONTYPE_HH
 namespace Opm {
 struct LinearizationType{
-    enum VarType {all,pressure,seqtransport};
-    VarType type = all;
+    enum VarType {implicit, pressure, seqtransport};
+    VarType type = implicit;
     unsigned time = 0;
 };    
 }
