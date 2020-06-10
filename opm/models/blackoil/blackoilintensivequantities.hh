@@ -198,15 +198,18 @@ public:
         }
         
         //oil is the reference phase for pressure
-        Evaluation ST=1;// get current value
+        Evaluation ST=1.0;
         if(linearizationType.type == Opm::LinearizationType::seqtransport){           
-                ST = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
+            ST = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
+        }else if (linearizationType.type == Opm::LinearizationType::pressure) {
+            // we are doing sequation pressure where ST may not be 1 any more
+            ST = elemCtx.problem().totalSaturation(globalSpaceIdx);
         }
         fluidState_.setTotalSaturation(ST);
         if (priVars.primaryVarsMeaning() == PrimaryVariables::Sw_pg_Rv) {
             Evaluation pg;
             if(linearizationType.type == Opm::LinearizationType::seqtransport){              
-                pg = Toolbox::value(fluidState_.pressure(gasPhaseIdx));// get current value assuem this is not updated
+                pg = Toolbox::value(elemCtx.problem().pressure(globalSpaceIdx, gasPhaseIdx));// get current value assuem this is not updated
             }else{
                 pg = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             }
@@ -217,7 +220,7 @@ public:
         else {
             Evaluation po;
             if(linearizationType.type == Opm::LinearizationType::seqtransport){
-                po = Toolbox::value(fluidState_.pressure(oilPhaseIdx));;// get current value assume this is never updated
+                po = Toolbox::value(elemCtx.problem().pressure(globalSpaceIdx, oilPhaseIdx));;// get current value assume this is never updated
             }else{
                 po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             }            

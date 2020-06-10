@@ -189,7 +189,9 @@ protected:
                                  PrimaryVariables& nextValue,
                                  const PrimaryVariables& currentValue,
                                  const EqVector& update,
-                                 const EqVector& currentResidual)
+                                 const EqVector& currentResidual,
+                                 const LinearizationType& linearizationType
+        )
     {
         static constexpr bool enableSolvent = Indices::solventSaturationIdx >= 0;
         static constexpr bool enablePolymer = Indices::polymerConcentrationIdx >= 0;
@@ -244,9 +246,14 @@ protected:
             Scalar delta = update[pvIdx];
 
             // limit pressure delta
+            
             if (pvIdx == Indices::pressureSwitchIdx) {
-                if (std::abs(delta) > dpMaxRel_*currentValue[pvIdx])
-                    delta = Opm::signum(delta)*dpMaxRel_*currentValue[pvIdx];
+                if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                    // set max update of ST
+                }else{
+                    if (std::abs(delta) > dpMaxRel_*currentValue[pvIdx])
+                        delta = Opm::signum(delta)*dpMaxRel_*currentValue[pvIdx];
+                }
             }
             // water saturation delta
             else if (pvIdx == Indices::waterSaturationIdx)
