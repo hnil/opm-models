@@ -353,6 +353,8 @@ public:
      */
     bool adaptPrimaryVariables(const Problem& problem, unsigned globalDofIdx, Scalar eps = 0.0)
     {
+        // seem a bit out to place
+        LinearizationType linearizationType = problem.simulator().model().linearizer().getLinearizationType();
         static const Scalar thresholdWaterFilledCell = 1.0 - eps;
 
         // this function accesses quite a few black-oil specific low-level functions
@@ -398,7 +400,13 @@ public:
                 // represents the oil phase pressure, so we do not need to change
                 // this. For the gas dissolution factor, we use the low-level blackoil
                 // PVT objects to calculate the mole fraction of gas saturated oil.
-                Scalar po = (*this)[Indices::pressureSwitchIdx];
+                Scalar po;
+                if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                    // This should be the oil pressure
+                    po = problem.pressure(globalDofIdx, oilPhaseIdx);
+                }else{
+                    po = (*this)[Indices::pressureSwitchIdx];
+                }
                 Scalar T = asImp_().temperature_();
                 Scalar SoMax = problem.maxOilSaturation(globalDofIdx);
                 Scalar RsMax = problem.maxGasDissolutionFactor(/*timeIdx=*/0, globalDofIdx);
@@ -419,8 +427,12 @@ public:
             if (So < -eps && Sg2 > 0.0 && FluidSystem::enableVaporizedOil()) {
                 // the oil phase disappeared and some hydrocarbon gas phase is still
                 // present, i.e., switch the primary variables to { Sw, pg, Rv }.
-                Scalar po = (*this)[Indices::pressureSwitchIdx];
-
+                Scalar po;
+                if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                    po = problem.pressure(globalDofIdx, oilPhaseIdx);
+                }else{
+                    po = (*this)[Indices::pressureSwitchIdx];
+                }
                 // we only have the oil pressure readily available, but we need the gas
                 // pressure, i.e. we must determine capillary pressure
                 Scalar pC[numPhases] = { 0.0 };
@@ -440,7 +452,9 @@ public:
                                                                          Scalar(0),
                                                                          SoMax);
                 setPrimaryVarsMeaning(Sw_pg_Rv);
-                (*this)[Indices::pressureSwitchIdx] = pg;
+                if(not(linearizationType.type == Opm::LinearizationType::seqtransport)){
+                    (*this)[Indices::pressureSwitchIdx] = pg;
+                }
                 if (compositionSwitchEnabled)
                     (*this)[Indices::compositionSwitchIdx] = std::min(RvMax, RvSat);
 
@@ -469,7 +483,12 @@ public:
             // appears as soon as more of the gas component is present in the oil phase
             // than what saturated oil can hold.
             Scalar T = asImp_().temperature_();
-            Scalar po = (*this)[Indices::pressureSwitchIdx];
+            Scalar po;
+            if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                po = problem.pressure(globalDofIdx, oilPhaseIdx);
+            }else{
+                po = (*this)[Indices::pressureSwitchIdx];
+            }
             Scalar So = 1.0 - Sw - solventSaturation_();
             Scalar SoMax = std::max(So, problem.maxOilSaturation(globalDofIdx));
             Scalar RsMax = problem.maxGasDissolutionFactor(/*timeIdx=*/0, globalDofIdx);
@@ -495,8 +514,14 @@ public:
         else {
             assert(primaryVarsMeaning() == Sw_pg_Rv);
             assert(compositionSwitchEnabled);
+            Scalar pg;
+            if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                // This should be the gass pressure
+                pg = problem.pressure(globalDofIdx, gasPhaseIdx);
+            }else{
+                pg = (*this)[Indices::pressureSwitchIdx];
+            }
 
-            Scalar pg = (*this)[Indices::pressureSwitchIdx];
             Scalar Sg = 1.0 - Sw - solventSaturation_();
 
             // special case for cells with almost only water
@@ -516,8 +541,9 @@ public:
                 setPrimaryVarsMeaning(Sw_po_Sg);
                 if (waterEnabled)
                     (*this)[Indices::waterSaturationIdx] = 1.0;
-
-                (*this)[Indices::pressureSwitchIdx] = po;
+                if(not(linearizationType.type == Opm::LinearizationType::seqtransport)){
+                    (*this)[Indices::pressureSwitchIdx] = po;
+                }
                 (*this)[Indices::compositionSwitchIdx] = 0.0; // hydrocarbon gas saturation
 
                 return true;
@@ -552,7 +578,9 @@ public:
                 Scalar po = pg + (pC[oilPhaseIdx] - pC[gasPhaseIdx]);
 
                 setPrimaryVarsMeaning(Sw_po_Sg);
-                (*this)[Indices::pressureSwitchIdx] = po;
+                if(not(linearizationType.type == Opm::LinearizationType::seqtransport)){
+                    (*this)[Indices::pressureSwitchIdx] = po;
+                }
                 (*this)[Indices::compositionSwitchIdx] = Sg; // hydrocarbon gas saturation
 
                 return true;
