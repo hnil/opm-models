@@ -718,7 +718,6 @@ protected:
                  const GlobalEqVector& currentResidual)
     {
         const auto& constraintsMap = model().linearizer().constraintsMap();
-        LinearizationType linearizationType = model().linearizer().getLinearizationType();
         // first, write out the current solution to make convergence
         // analysis possible
         asImp_().writeConvergence_(currentSolution, solutionUpdate);
@@ -741,18 +740,14 @@ protected:
                                                      nextSolution[dofIdx],
                                                      currentSolution[dofIdx],
                                                      solutionUpdate[dofIdx],
-                                                     currentResidual[dofIdx],
-                                                     linearizationType
-                        );
+                                                     currentResidual[dofIdx]);
             }
             else
                 asImp_().updatePrimaryVariables_(dofIdx,
                                                  nextSolution[dofIdx],
                                                  currentSolution[dofIdx],
                                                  solutionUpdate[dofIdx],
-                                                 currentResidual[dofIdx],
-                                                 linearizationType
-                    );
+                                                 currentResidual[dofIdx]);
         }
 
         // update the DOFs of the auxiliary equations
