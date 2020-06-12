@@ -495,6 +495,26 @@ public:
     // \}
 
     /*!
+     * Returns an element's pressure at the begining
+     * of the timestep. Needed for sequential, as the
+     * transport part treats pressure as a constant,
+     * which therefore must be in the problem class.
+     */
+    Scalar pressure(unsigned globalDofIdx OPM_UNUSED, unsigned phaseIndex OPM_UNUSED) const
+    {
+        throw std::logic_error("Not implemented: ReservoirProblem::pressure()");
+    }
+
+    /*!
+     * Returns an element's total saturation.
+     */
+    Scalar totalSaturation(unsigned globalDofIdx OPM_UNUSED) const
+    {
+        throw std::logic_error("Not implemented: ReservoirProblem::totalSaturation()");
+    }
+
+
+    /*!
      * \name Boundary conditions
      */
     //! \{
