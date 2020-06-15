@@ -262,14 +262,11 @@ public:
     { focusDofIdx_ = dofIdx; }
 
     /*!
-     * \brief Sets the time index on which the simulator is currently "focused" on
+     * \brief Sets the linearization type.
      *
-     * I.e., in the case of automatic differentiation, all derivatives are with regard to
-     * the primary variables of that time index. Only "primary" DOFs can be
-     * focused on.
+     * The linearization type can be for example fully implicit, sequential pressure or transport.
      */
-    
-    void setFocusTimeIndex(LinearizationType linearizationType)
+    void setLinearizationType(LinearizationType linearizationType)
     { linearizationType_ = linearizationType; }
 
     /*!
@@ -281,10 +278,10 @@ public:
     { return focusDofIdx_; }
 
     /*!
-     * \brief Returns the time index on which the simulator is currently "focused" on
+     * \brief Returns the linearization type.
      *
-     * \copydetails setFocusDof()
-     */ 
+     * \copydetails setLinearizationType()
+     */
     LinearizationType linearizationType() const
     { return linearizationType_; }
 
@@ -601,7 +598,7 @@ protected:
 #endif
 
         dofVars_[dofIdx].priVars[timeIdx] = priVars;
-        dofVars_[dofIdx].intensiveQuantities[timeIdx].update(/*context=*/asImp_(), dofIdx, timeIdx, linearizationType_);
+        dofVars_[dofIdx].intensiveQuantities[timeIdx].update(/*context=*/asImp_(), dofIdx, timeIdx);
     }
 
     IntensiveQuantities intensiveQuantitiesStashed_;

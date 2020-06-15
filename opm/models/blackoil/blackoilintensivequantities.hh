@@ -115,13 +115,14 @@ public:
     /*!
      * \copydoc IntensiveQuantities::update
      */
-    void update(const ElementContext& elemCtx, unsigned dofIdx, unsigned timeIdx, LinearizationType linearizationType)
+    void update(const ElementContext& elemCtx, unsigned dofIdx, unsigned timeIdx)
     {
-        ParentType::update(elemCtx, dofIdx, timeIdx, linearizationType);
+        ParentType::update(elemCtx, dofIdx, timeIdx);
 
+        const auto linearizationType = elemCtx.linearizationType();
         const auto& problem = elemCtx.problem();
         const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
-        asImp_().updateTemperature_(elemCtx, dofIdx, timeIdx, linearizationType);
+        asImp_().updateTemperature_(elemCtx, dofIdx, timeIdx);
 
         unsigned globalSpaceIdx = elemCtx.globalSpaceIndex(dofIdx, timeIdx);
         unsigned pvtRegionIdx = priVars.pvtRegionIndex();
@@ -135,7 +136,7 @@ public:
             if (priVars.primaryVarsMeaning() == PrimaryVariables::OnePhase_p) {
                 Sw = 1.0;
             } else {
-            	Sw = priVars.makeEvaluation(Indices::waterSaturationIdx, timeIdx,  linearizationType);
+                Sw = priVars.makeEvaluation(Indices::waterSaturationIdx, timeIdx, linearizationType);
             }
         }
         Evaluation Sg = 0.0;
@@ -179,14 +180,14 @@ public:
         if (FluidSystem::phaseIsActive(oilPhaseIdx)){
             fluidState_.setSaturation(oilPhaseIdx, So);
         }
-        asImp_().solventPreSatFuncUpdate_(elemCtx, dofIdx, timeIdx, linearizationType);
+        asImp_().solventPreSatFuncUpdate_(elemCtx, dofIdx, timeIdx);
 
         // now we compute all phase pressures
         Evaluation pC[numPhases];
         const auto& materialParams = problem.materialLawParams(elemCtx, dofIdx, timeIdx);
         MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);
 
-        //NB which index is correct!!
+        // NB which index is correct!!
         if (FluidSystem::phaseIsActive(waterPhaseIdx)){
             fluidState_.setPc(waterPhaseIdx, pC[waterPhaseIdx]);
         }
@@ -196,34 +197,36 @@ public:
         if (FluidSystem::phaseIsActive(oilPhaseIdx)){
             fluidState_.setPc(oilPhaseIdx, pC[oilPhaseIdx]);
         }
-        
-        //oil is the reference phase for pressure
-        Evaluation ST=1.0;
-        if(linearizationType.type == Opm::LinearizationType::seqtransport){           
+
+        // oil is the reference phase for pressure
+        Evaluation ST = 1.0;
+        if (linearizationType.type == Opm::LinearizationType::seqtransport) {
             ST = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
-        }else if (linearizationType.type == Opm::LinearizationType::pressure) {
+        } else if (linearizationType.type == Opm::LinearizationType::pressure) {
             // we are doing sequation pressure where ST may not be 1 any more
             ST = elemCtx.problem().totalSaturation(globalSpaceIdx);
         }
         fluidState_.setTotalSaturation(ST);
         if (priVars.primaryVarsMeaning() == PrimaryVariables::Sw_pg_Rv) {
             Evaluation pg;
-            if(linearizationType.type == Opm::LinearizationType::seqtransport){              
-                pg = Toolbox::value(elemCtx.problem().pressure(globalSpaceIdx, gasPhaseIdx));// get current value assuem this is not updated
-            }else{
+            if (linearizationType.type == Opm::LinearizationType::seqtransport) {
+                pg = Toolbox::value(
+                    elemCtx.problem().pressure(globalSpaceIdx,
+                                               gasPhaseIdx)); // get current value assuem this is not updated
+            } else {
                 pg = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             }
             for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
                 if (FluidSystem::phaseIsActive(phaseIdx))
                     fluidState_.setPressure(phaseIdx, pg + (pC[phaseIdx] - pC[gasPhaseIdx]));
-        }
-        else {
+        } else {
             Evaluation po;
-            if(linearizationType.type == Opm::LinearizationType::seqtransport){
-                po = Toolbox::value(elemCtx.problem().pressure(globalSpaceIdx, oilPhaseIdx));;// get current value assume this is never updated
-            }else{
+            if (linearizationType.type == Opm::LinearizationType::seqtransport) {
+                po = Toolbox::value(elemCtx.problem().pressure(globalSpaceIdx, oilPhaseIdx));
+                ; // get current value assume this is never updated
+            } else {
                 po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
-            }            
+            }
             for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx)
                 if (FluidSystem::phaseIsActive(phaseIdx))
                     fluidState_.setPressure(phaseIdx, po + (pC[phaseIdx] - pC[oilPhaseIdx]));
@@ -235,7 +238,7 @@ public:
         Opm::Valgrind::CheckDefined(mobility_);
 
         // update the Saturation functions for the blackoil solvent module.
-        asImp_().solventPostSatFuncUpdate_(elemCtx, dofIdx, timeIdx, linearizationType);
+        asImp_().solventPostSatFuncUpdate_(elemCtx, dofIdx, timeIdx);
 
         Evaluation SoMax = 0.0;
         if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
@@ -389,17 +392,14 @@ public:
             porosity_ *= 1.0 + x + 0.5*x*x;
         }
 
-        
         // deal with water induced rock compaction
         porosity_ *= problem.template rockCompPoroMultiplier<Evaluation>(*this, globalSpaceIdx);
 
         // this line is do things for sequential simulation avoid modifying storage term.
         porosity_ *= ST;
-        
 
-        
-        asImp_().solventPvtUpdate_(elemCtx, dofIdx, timeIdx, linearizationType);
-        asImp_().polymerPropertiesUpdate_(elemCtx, dofIdx, timeIdx, linearizationType);
+        asImp_().solventPvtUpdate_(elemCtx, dofIdx, timeIdx);
+        asImp_().polymerPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
         asImp_().updateEnergyQuantities_(elemCtx, dofIdx, timeIdx, paramCache);
         asImp_().foamPropertiesUpdate_(elemCtx, dofIdx, timeIdx);
 

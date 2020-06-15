@@ -99,9 +99,9 @@ public:
     /*!
      * \copydoc IntensiveQuantities::update
      */
-    void update(const ElementContext& elemCtx, unsigned dofIdx, unsigned timeIdx, LinearizationType linearizationType)
+    void update(const ElementContext& elemCtx, unsigned dofIdx, unsigned timeIdx)
     {
-        ParentType::update(elemCtx, dofIdx, timeIdx, linearizationType);
+        ParentType::update(elemCtx, dofIdx, timeIdx);
         EnergyIntensiveQuantities::updateTemperatures_(fluidState_, elemCtx, dofIdx, timeIdx);
 
         const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);

@@ -352,14 +352,13 @@ public:
      */
     void updateTemperature_(const ElementContext& elemCtx,
                             unsigned dofIdx,
-                            unsigned timeIdx,
-                            LinearizationType linearizationType)
+                            unsigned timeIdx)
     {
         auto& fs = asImp_().fluidState_;
         const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
 
         // set temperature
-        fs.setTemperature(priVars.makeEvaluation(temperatureIdx, timeIdx, linearizationType));
+        fs.setTemperature(priVars.makeEvaluation(temperatureIdx, timeIdx, elemCtx.linearizationType()));
     }
 
     /*!
@@ -420,8 +419,7 @@ class BlackOilEnergyIntensiveQuantities<TypeTag, false>
 public:
     void updateTemperature_(const ElementContext& elemCtx,
                             unsigned dofIdx,
-                            unsigned timeIdx,
-                            LinearizationType linearizationType)
+                            unsigned timeIdx)
     {
         if (enableTemperature) {
             // even if energy is conserved, the temperature can vary over the spatial

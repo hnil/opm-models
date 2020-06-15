@@ -101,10 +101,9 @@ public:
      */
     void update(const ElementContext& elemCtx,
                 unsigned dofIdx,
-                unsigned timeIdx,
-                LinearizationType linearizationType)
+                unsigned timeIdx)
     {
-        ParentType::update(elemCtx, dofIdx, timeIdx, linearizationType);
+        ParentType::update(elemCtx, dofIdx, timeIdx);
         ParentType::checkDefined();
 
         typename FluidSystem::template ParameterCache<Evaluation> paramCache;

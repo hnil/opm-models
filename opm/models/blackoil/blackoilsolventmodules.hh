@@ -898,12 +898,11 @@ public:
      */
     void solventPreSatFuncUpdate_(const ElementContext& elemCtx,
                                   unsigned dofIdx,
-                                  unsigned timeIdx,
-                                  LinearizationType linearizationType)
+                                  unsigned timeIdx)
     {
         const PrimaryVariables& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
         auto& fs = asImp_().fluidState_;
-        solventSaturation_ = priVars.makeEvaluation(solventSaturationIdx, timeIdx,linearizationType);
+        solventSaturation_ = priVars.makeEvaluation(solventSaturationIdx, timeIdx, elemCtx.linearizationType());
         hydrocarbonSaturation_ = fs.saturation(gasPhaseIdx);
 
         // apply a cut-off. Don't waste calculations if no solvent
@@ -924,8 +923,7 @@ public:
      */
     void solventPostSatFuncUpdate_(const ElementContext& elemCtx,
                                    unsigned dofIdx,
-                                   unsigned timeIdx,
-                                   LinearizationType linearizationType)
+                                   unsigned timeIdx)
     {
         // revert the gas "saturation" of the fluid state back to the saturation of the
         // hydrocarbon gas.
@@ -953,6 +951,7 @@ public:
             MaterialLaw::capillaryPressures(pC, materialParams, fs);
 
             //oil is the reference phase for pressure
+            const auto linearizationType = elemCtx.linearizationType();
             if (priVars.primaryVarsMeaning() == PrimaryVariables::Sw_pg_Rv)
                 pgMisc = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             else {
@@ -1040,8 +1039,7 @@ public:
      */
     void solventPvtUpdate_(const ElementContext& elemCtx,
                            unsigned scvIdx,
-                           unsigned timeIdx,
-                           LinearizationType linearizationType)
+                           unsigned timeIdx)
     {
         const auto& iq = asImp_();
         const auto& fs = iq.fluidState();
@@ -1276,20 +1274,17 @@ class BlackOilSolventIntensiveQuantities<TypeTag, false>
 public:
     void solventPreSatFuncUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                                   unsigned scvIdx OPM_UNUSED,
-                                  unsigned timeIdx OPM_UNUSED,
-                                  LinearizationType linearizationType OPM_UNUSED)
+                                  unsigned timeIdx OPM_UNUSED)
     { }
 
     void solventPostSatFuncUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                                    unsigned scvIdx OPM_UNUSED,
-                                   unsigned timeIdx OPM_UNUSED,
-                                   LinearizationType linearizationType OPM_UNUSED )
+                                   unsigned timeIdx OPM_UNUSED)
     { }
 
     void solventPvtUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                            unsigned scvIdx OPM_UNUSED,
-                           unsigned timeIdx OPM_UNUSED,
-                           LinearizationType linearizationType OPM_UNUSED)
+                           unsigned timeIdx OPM_UNUSED)
     { }
 
     const Evaluation& solventSaturation() const

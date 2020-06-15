@@ -884,7 +884,7 @@ public:
         // Use log(v0) as initial value for u
         auto u = v0AbsLog;
         bool converged = false;
-        // TODO make this into paramters
+        // TODO make this into parameters
         for (int i = 0; i < 20; ++i) {
             auto f = F(u);
             auto df = dF(u);
@@ -1043,9 +1043,9 @@ public:
      */
     void polymerPropertiesUpdate_(const ElementContext& elemCtx,
                                   unsigned dofIdx,
-                                  unsigned timeIdx,
-                                  LinearizationType linearizationType)
+                                  unsigned timeIdx)
     {
+        const auto linearizationType = elemCtx.linearizationType();
         const PrimaryVariables& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
         polymerConcentration_ = priVars.makeEvaluation(polymerConcentrationIdx, timeIdx, linearizationType);
         if (enablePolymerMolarWeight) {
@@ -1163,9 +1163,7 @@ class BlackOilPolymerIntensiveQuantities<TypeTag, false>
 public:
     void polymerPropertiesUpdate_(const ElementContext& elemCtx OPM_UNUSED,
                                   unsigned scvIdx OPM_UNUSED,
-                                  unsigned timeIdx OPM_UNUSED,
-                                  LinearizationType linearizationTypeIdx OPM_UNUSED)
-
+                                  unsigned timeIdx OPM_UNUSED)
     { }
 
     const Evaluation& polymerMoleWeight() const

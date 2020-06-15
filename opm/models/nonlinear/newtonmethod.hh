@@ -44,8 +44,7 @@
 #include <dune/common/classname.hh>
 #include <dune/common/version.hh>
 #include <dune/common/parallel/mpihelper.hh>
-#include <dune/common/parallel/mpihelper.hh>
-#include <opm/models/discretization/common/linearizationtype.hh>
+
 #include <iostream>
 #include <sstream>
 
@@ -331,7 +330,6 @@ public:
                               << std::flush;
                 }
 
-                //
                 // do the actual linearization
                 linearizeTimer_.start();
                 asImp_().linearizeDomain_();
@@ -718,6 +716,7 @@ protected:
                  const GlobalEqVector& currentResidual)
     {
         const auto& constraintsMap = model().linearizer().constraintsMap();
+
         // first, write out the current solution to make convergence
         // analysis possible
         asImp_().writeConvergence_(currentSolution, solutionUpdate);

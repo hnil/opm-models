@@ -52,7 +52,8 @@
 namespace Opm {
 // forward declarations
 template<class TypeTag>
-class EcfvDiscretization;    
+class EcfvDiscretization;
+
 /*!
  * \ingroup FiniteVolumeDiscretizations
  *
@@ -163,10 +164,13 @@ public:
     }
 
     /*!
-     * \brief Linearize the full system of non-linear equations about linearizationType
-     * defualt is 0 i.e. current time normally time to be found.
+     * \brief Linearize the full system of non-linear equations.
      *
-     * This means the spatial domain plus all auxiliary equations.
+     * The linearizationType() controls the scheme used and the focus
+     * time index. The default is fully implicit scheme, and focus index
+     * equal to 0, i.e. current time (end of step).
+     *
+     * This linearizes the spatial domain and all auxiliary equations.
      */
     void linearize()
     {
@@ -325,7 +329,6 @@ private:
             elementCtx_[threadId] = new ElementContext(simulator_());
     }
 
-    
     // Construct the BCRS matrix for the Jacobian of the residual function
     void createMatrix_()
     {
@@ -506,7 +509,7 @@ private:
         auto& localLinearizer = model_().localLinearizer(threadId);
 
         // the actual work of linearization is done by the local linearizer class
-        elementCtx->setFocusTimeIndex(linearizationType_);
+        elementCtx->setLinearizationType(linearizationType_);
         localLinearizer.linearize(*elementCtx, elem);
 
         // update the right hand side and the Jacobian matrix
