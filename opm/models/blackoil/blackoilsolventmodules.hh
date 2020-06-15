@@ -53,7 +53,7 @@
 #include <opm/material/common/Exceptions.hpp>
 
 #include <dune/common/fvector.hh>
-#include <opm/models/discretization/common/fvbaselinearizer.hh>
+
 #include <string>
 
 namespace Opm {

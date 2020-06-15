@@ -122,6 +122,7 @@ public:
         const auto linearizationType = elemCtx.linearizationType();
         const auto& problem = elemCtx.problem();
         const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
+
         asImp_().updateTemperature_(elemCtx, dofIdx, timeIdx);
 
         unsigned globalSpaceIdx = elemCtx.globalSpaceIndex(dofIdx, timeIdx);
@@ -222,8 +223,8 @@ public:
         } else {
             Evaluation po;
             if (linearizationType.type == Opm::LinearizationType::seqtransport) {
+                // get current value assume this is never updated
                 po = Toolbox::value(elemCtx.problem().pressure(globalSpaceIdx, oilPhaseIdx));
-                ; // get current value assume this is never updated
             } else {
                 po = priVars.makeEvaluation(Indices::pressureSwitchIdx, timeIdx, linearizationType);
             }
@@ -395,7 +396,7 @@ public:
         // deal with water induced rock compaction
         porosity_ *= problem.template rockCompPoroMultiplier<Evaluation>(*this, globalSpaceIdx);
 
-        // this line is do things for sequential simulation avoid modifying storage term.
+        // this line is doing things for sequential simulation to avoid modifying storage term.
         porosity_ *= ST;
 
         asImp_().solventPvtUpdate_(elemCtx, dofIdx, timeIdx);

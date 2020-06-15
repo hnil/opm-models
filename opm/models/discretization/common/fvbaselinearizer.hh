@@ -276,11 +276,11 @@ public:
     void setLinearizationType(LinearizationType linearizationType){
         linearizationType_ = linearizationType;
     };
-    
+
     const LinearizationType& getLinearizationType() const{
         return linearizationType_;
     };
-    
+
     /*!
      * \brief Returns the map of constraint degrees of freedom.
      *

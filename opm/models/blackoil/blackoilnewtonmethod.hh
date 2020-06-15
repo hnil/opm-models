@@ -247,8 +247,8 @@ protected:
             if (pvIdx == Indices::pressureSwitchIdx) {
                 LinearizationType linearizationType = this->model().linearizer().getLinearizationType();
                 if (linearizationType.type == Opm::LinearizationType::seqtransport) {
-                    // set max update of ST
-                }else{
+                    // TODO: set max update of ST
+                } else {
                     if (std::abs(delta) > dpMaxRel_*currentValue[pvIdx])
                         delta = Opm::signum(delta)*dpMaxRel_*currentValue[pvIdx];
                 }

@@ -353,8 +353,7 @@ public:
      */
     bool adaptPrimaryVariables(const Problem& problem, unsigned globalDofIdx, Scalar eps = 0.0)
     {
-        // seem a bit out to place
-        LinearizationType linearizationType = problem.simulator().model().linearizer().getLinearizationType();
+        const LinearizationType linearizationType = problem.simulator().model().linearizer().getLinearizationType();
         static const Scalar thresholdWaterFilledCell = 1.0 - eps;
 
         // this function accesses quite a few black-oil specific low-level functions
@@ -401,10 +400,10 @@ public:
                 // this. For the gas dissolution factor, we use the low-level blackoil
                 // PVT objects to calculate the mole fraction of gas saturated oil.
                 Scalar po;
-                if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                if (linearizationType.type == Opm::LinearizationType::seqtransport) {
                     // This should be the oil pressure
                     po = problem.pressure(globalDofIdx, oilPhaseIdx);
-                }else{
+                } else {
                     po = (*this)[Indices::pressureSwitchIdx];
                 }
                 Scalar T = asImp_().temperature_();
@@ -428,9 +427,9 @@ public:
                 // the oil phase disappeared and some hydrocarbon gas phase is still
                 // present, i.e., switch the primary variables to { Sw, pg, Rv }.
                 Scalar po;
-                if(linearizationType.type == Opm::LinearizationType::seqtransport){
+                if (linearizationType.type == Opm::LinearizationType::seqtransport) {
                     po = problem.pressure(globalDofIdx, oilPhaseIdx);
-                }else{
+                } else {
                     po = (*this)[Indices::pressureSwitchIdx];
                 }
                 // we only have the oil pressure readily available, but we need the gas
@@ -452,7 +451,7 @@ public:
                                                                          Scalar(0),
                                                                          SoMax);
                 setPrimaryVarsMeaning(Sw_pg_Rv);
-                if(not(linearizationType.type == Opm::LinearizationType::seqtransport)){
+                if (not(linearizationType.type == Opm::LinearizationType::seqtransport)) {
                     (*this)[Indices::pressureSwitchIdx] = pg;
                 }
                 if (compositionSwitchEnabled)
@@ -484,9 +483,9 @@ public:
             // than what saturated oil can hold.
             Scalar T = asImp_().temperature_();
             Scalar po;
-            if(linearizationType.type == Opm::LinearizationType::seqtransport){
+            if (linearizationType.type == Opm::LinearizationType::seqtransport) {
                 po = problem.pressure(globalDofIdx, oilPhaseIdx);
-            }else{
+            } else {
                 po = (*this)[Indices::pressureSwitchIdx];
             }
             Scalar So = 1.0 - Sw - solventSaturation_();
@@ -514,14 +513,14 @@ public:
         else {
             assert(primaryVarsMeaning() == Sw_pg_Rv);
             assert(compositionSwitchEnabled);
+
             Scalar pg;
-            if(linearizationType.type == Opm::LinearizationType::seqtransport){
-                // This should be the gass pressure
+            if (linearizationType.type == Opm::LinearizationType::seqtransport) {
+                // This should be the gas pressure
                 pg = problem.pressure(globalDofIdx, gasPhaseIdx);
-            }else{
+            } else {
                 pg = (*this)[Indices::pressureSwitchIdx];
             }
-
             Scalar Sg = 1.0 - Sw - solventSaturation_();
 
             // special case for cells with almost only water
@@ -578,7 +577,7 @@ public:
                 Scalar po = pg + (pC[oilPhaseIdx] - pC[gasPhaseIdx]);
 
                 setPrimaryVarsMeaning(Sw_po_Sg);
-                if(not(linearizationType.type == Opm::LinearizationType::seqtransport)){
+                if (not(linearizationType.type == Opm::LinearizationType::seqtransport)) {
                     (*this)[Indices::pressureSwitchIdx] = po;
                 }
                 (*this)[Indices::compositionSwitchIdx] = Sg; // hydrocarbon gas saturation

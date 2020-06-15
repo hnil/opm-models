@@ -29,6 +29,7 @@
 #define EWOMS_FV_BASE_ELEMENT_CONTEXT_HH
 
 #include "fvbaseproperties.hh"
+
 #include <opm/models/discretization/common/linearizationtype.hh>
 #include <opm/models/utils/alignedallocator.hh>
 
@@ -97,7 +98,7 @@ public:
     {
         // remember the simulator object
         simulatorPtr_ = &simulator;
-        enableStorageCache_ = simulator.model().enableStorageCache();//EWOMS_GET_PARAM(TypeTag, bool, EnableStorageCache);
+        enableStorageCache_ = simulator.model().enableStorageCache();
         stashedDofIdx_ = -1;
         focusDofIdx_ = -1;
         linearizationType_ = Opm::LinearizationType();

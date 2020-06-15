@@ -89,14 +89,15 @@ public:
      */
     Evaluation makeEvaluation(unsigned varIdx, unsigned timeIdx, LinearizationType linearizationType = LinearizationType()) const
     {
-    if (std::is_same<Evaluation, Scalar>::value)
-	return (*this)[varIdx]; // finite differences
-    else {
-        if (timeIdx == linearizationType.time)
-            return Toolbox::createVariable((*this)[varIdx], varIdx);
-        else
-            return Toolbox::createConstant((*this)[varIdx]);
-    }
+        if (std::is_same<Evaluation, Scalar>::value)
+            return (*this)[varIdx]; // finite differences
+        else {
+            // automatic differentiation
+            if (timeIdx == linearizationType.time)
+                return Toolbox::createVariable((*this)[varIdx], varIdx);
+            else
+                return Toolbox::createConstant((*this)[varIdx]);
+        }
     }
 
     /*!
