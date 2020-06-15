@@ -31,33 +31,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <opm/common/utility/FileSystem.hpp>
 
 namespace Opm {
-
-
-// This small trio of functions is necessary to provide a generic
-// interface to getting grid names, when only some grids provide the
-// name() method.
-template <class GridView>
-auto getGridNameImp(const GridView& gridView, int)
-    -> decltype(gridView.grid().name())
-{
-    return gridView.grid().name();
-};
-template <class GridView>
-auto getGridNameImp(const GridView&, long long)
-    -> std::string
-{
-    return "GridWithNoNameMethod";
-};
-template <class GridView>
-auto getGridName(const GridView& gridView)
-    -> decltype(getGridNameImp(gridView, 0))
-{
-    return getGridNameImp(gridView, 0);
-};
-
 
 /*!
  * \brief Load or save a state of a problem to/from the harddisk.
@@ -71,7 +46,7 @@ class Restart
     template <class GridView>
     static const std::string magicRestartCookie_(const GridView& gridView)
     {
-        static const std::string gridName = getGridName(gridView);
+        static const std::string gridName = "blubb"; // gridView.grid().name();
         static const int dim = GridView::dimension;
 
         int numVertices = gridView.size(dim);
@@ -94,33 +69,22 @@ class Restart
     /*!
      * \brief Return the restart file name.
      */
-    template <class Simulator, class Scalar>
-    static const std::string restartFileName_(const Simulator& simulator,                                                                                     Scalar t)
+    template <class GridView, class Scalar>
+    static const std::string restartFileName_(const GridView& gridView,
+                                              const std::string& outputDir,
+                                              const std::string& simName,
+                                              Scalar t)
     {
-        // Directory.
-        std::string dir = simulator.problem().outputDir();
+        std::string dir = outputDir;
         if (dir == ".")
             dir = "";
         else if (!dir.empty() && dir.back() != '/')
             dir += "/";
-        namespace fs = Opm::filesystem;
-        fs::path output_dir(dir);
-        fs::path subdir("ebos_restart");
-        output_dir = output_dir / subdir;
-        if(!(fs::exists(output_dir))){
-                fs::create_directory(output_dir);
-         }
 
-        // Filename.
-        int rank = simulator.gridView().comm().rank();
-        std::string simName = simulator.problem().name();
+        int rank = gridView.comm().rank();
         std::ostringstream oss;
-        oss << simName << "_time=" << t << "_rank=" << rank << ".ers";
-        fs::path output_file(oss.str());
-
-        // Combine and return.
-        fs::path full_path = output_dir / output_file;
-        return full_path.string();
+        oss << dir << simName << "_time=" << t << "_rank=" << rank << ".ers";
+        return oss.str();
     }
 
 public:
@@ -134,11 +98,13 @@ public:
      * \brief Write the current state of the model to disk.
      */
     template <class Simulator>
-    void serializeBegin(Simulator& simulator, const bool atEndOfStep = true)
+    void serializeBegin(Simulator& simulator)
     {
         const std::string magicCookie = magicRestartCookie_(simulator.gridView());
-        const double serializationTime = atEndOfStep ? simulator.time() + simulator.timeStepSize() : simulator.time();
-        fileName_ = restartFileName_(simulator, serializationTime);
+        fileName_ = restartFileName_(simulator.gridView(),
+                                     simulator.problem().outputDir(),
+                                     simulator.problem().name(),
+                                     simulator.time());
 
         // open output file and write magic cookie
         outStream_.open(fileName_.c_str());
@@ -198,16 +164,14 @@ public:
     void serializeEnd()
     { outStream_.close(); }
 
-
-   /*!
+    /*!
      * \brief Start reading a restart file at a certain simulated
      *        time.
      */
-
     template <class Simulator, class Scalar>
     void deserializeBegin(Simulator& simulator, Scalar t)
     {
-        fileName_ = restartFileName_(simulator, t);
+        fileName_ = restartFileName_(simulator.gridView(), simulator.problem().outputDir(), simulator.problem().name(), t);
 
         // open input file and read magic cookie
         inStream_.open(fileName_.c_str());
