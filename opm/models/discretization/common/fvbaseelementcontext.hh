@@ -98,11 +98,10 @@ public:
     {
         // remember the simulator object
         simulatorPtr_ = &simulator;
-        enableStorageCache_ = simulator.model().enableStorageCache();
+        //enableStorageCache_ = simulator.model().enableStorageCache();
         stashedDofIdx_ = -1;
         focusDofIdx_ = -1;
-        linearizationType_ = Opm::LinearizationType();
-    }
+     }
 
     static void *operator new(size_t size)
     { return Opm::aligned_alloc(alignof(FvBaseElementContext), size); }
@@ -183,7 +182,7 @@ public:
      */
     void updateAllIntensiveQuantities()
     {
-        if (!enableStorageCache_) {
+        if (!this->enableStorageCache()) {
             // if the storage cache is disabled, we need to calculate the storage term
             // from scratch, i.e. we need the intensive quantities of all of the history.
             for (unsigned timeIdx = 0; timeIdx < timeDiscHistorySize; ++ timeIdx)
@@ -263,14 +262,6 @@ public:
     { focusDofIdx_ = dofIdx; }
 
     /*!
-     * \brief Sets the linearization type.
-     *
-     * The linearization type can be for example fully implicit, sequential pressure or transport.
-     */
-    void setLinearizationType(LinearizationType linearizationType)
-    { linearizationType_ = linearizationType; }
-
-    /*!
      * \brief Returns the degree of freedom on which the simulator is currently "focused" on
      *
      * \copydetails setFocusDof()
@@ -284,7 +275,7 @@ public:
      * \copydetails setLinearizationType()
      */
     LinearizationType linearizationType() const
-    { return linearizationType_; }
+    { return this->model().linearizer().getLinearizationType(); }
 
     /*!
      * \brief Return a reference to the simulator.
@@ -421,7 +412,7 @@ public:
 #ifndef NDEBUG
         assert(0 <= dofIdx && dofIdx < numDof(timeIdx));
 
-        if (enableStorageCache_ && timeIdx != 0 && problem().recycleFirstIterationStorage())
+        if (this->enableStorageCache() && timeIdx != 0 && problem().recycleFirstIterationStorage())
             throw std::logic_error("If caching of the storage term is enabled, only the intensive quantities "
                                    "for the most-recent substep (i.e. time index 0) are available!");
 #endif
@@ -542,13 +533,7 @@ public:
      * index. (time index 0.)
      */
     bool enableStorageCache() const
-    { return enableStorageCache_; }
-
-    /*!
-     * \brief Specifies if the cache for the storage term ought to be used for this context.
-     */
-    void setEnableStorageCache(bool yesno)
-    { enableStorageCache_ = yesno; }
+    { return this->model().enableStorageCache(); }
 
 private:
     Implementation& asImp_()
@@ -593,7 +578,7 @@ protected:
     void updateSingleIntQuants_(const PrimaryVariables& priVars, unsigned dofIdx, unsigned timeIdx)
     {
 #ifndef NDEBUG
-        if (enableStorageCache_ && timeIdx != 0 && problem().recycleFirstIterationStorage())
+        if (this->enableStorageCache() && timeIdx != 0 && problem().recycleFirstIterationStorage())
             throw std::logic_error("If caching of the storage term is enabled, only the intensive quantities "
                                    "for the most-recent substep (i.e. time index 0) are available!");
 #endif
@@ -617,8 +602,7 @@ protected:
 
     int stashedDofIdx_;
     int focusDofIdx_;
-    LinearizationType linearizationType_;
-    bool enableStorageCache_;
+    //bool enableStorageCache_;
 };
 
 } // namespace Opm

@@ -892,7 +892,6 @@ public:
 
             // in this method, we need to disable the storage cache because we want to
             // evaluate the storage term for other time indices than the most recent one
-            elemCtx.setEnableStorageCache(false);
 
             for (; !threadedElemIt.isFinished(elemIt); elemIt = threadedElemIt.increment()) {
                 const Element& elem = *elemIt;
@@ -952,7 +951,6 @@ public:
 
         // calculate the rate at the boundary and the source rate
         ElementContext elemCtx(simulator_);
-        elemCtx.setEnableStorageCache(false);
         auto eIt = simulator_.gridView().template begin</*codim=*/0>();
         const auto& elemEndIt = simulator_.gridView().template end</*codim=*/0>();
         for (; eIt != elemEndIt; ++eIt) {
