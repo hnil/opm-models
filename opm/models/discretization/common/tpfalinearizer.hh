@@ -429,6 +429,21 @@ public:
             }
         }
     }
+    void addToResAndJacobi(VectorBlock& res, MatrixBlock& bMat, const ADVectorBlock& resid) const
+    {
+        for (unsigned eqIdx = 0; eqIdx < numEq; eqIdx++)
+            res[eqIdx] += resid[eqIdx].value();
+
+        for (unsigned eqIdx = 0; eqIdx < numEq; eqIdx++) {
+            for (unsigned pvIdx = 0; pvIdx < numEq; pvIdx++) {
+                // A[dofIdx][focusDofIdx][eqIdx][pvIdx] is the partial derivative of
+                // the residual function 'eqIdx' for the degree of freedom 'dofIdx'
+                // with regard to the focus variable 'pvIdx' of the degree of freedom
+                // 'focusDofIdx'
+                bMat[eqIdx][pvIdx] += resid[eqIdx].derivative(pvIdx);
+            }
+        }
+    }
 
 private:
     void linearize_()
@@ -441,9 +456,9 @@ private:
 #endif
         for (unsigned globI = 0; globI < numCells; globI++) {
             const auto& nbInfos = neighborInfo_[globI]; // this is a set but should maybe be changed
-            VectorBlock res(0.0);
-            MatrixBlock bMat(0.0);
-            ADVectorBlock adres(0.0);
+            VectorBlock res;//(0.0);
+            MatrixBlock bMat;//(0.0);
+            ADVectorBlock adres;//(0.0);
             const IntensiveQuantities* intQuantsInP = model_().cachedIntensiveQuantities(globI, /*timeIdx*/ 0);
             // if (intQuantsInP == nullptr) {
             //     throw std::logic_error("Missing updated intensive quantities for cell " + std::to_string(globI));
@@ -455,9 +470,9 @@ private:
             for (const auto& nbInfo : nbInfos) {
                 unsigned globJ = nbInfo.neighbor;
                 //assert(globJ != globI);
-                res = 0.0;
-                bMat = 0.0;
-                adres = 0.0;
+                //res = 0.0;
+                //bMat = 0.0;
+                //adres = 0.0;
                 const IntensiveQuantities* intQuantsExP = model_().cachedIntensiveQuantities(globJ, /*timeIdx*/ 0);
                 // if (intQuantsExP == nullptr) {
                 //     throw std::logic_error("Missing updated intensive quantities for cell " + std::to_string(globJ) + " when assembling fluxes for cell " + std::to_string(globI));
@@ -471,9 +486,9 @@ private:
                 residual_[globI] += res;
                 //jacobian_->addToBlock(globI, globI, bMat);
                 *diagMatAddress_[globI] += bMat;
-                bMat *= -1.0;
+                //bMat *= -1.0;
                 //jacobian_->addToBlock(globJ, globI, bMat);
-                *nbInfo.matAddress += bMat;
+                *nbInfo.matAddress -= bMat;
                 ++loc;
             }
 
@@ -511,7 +526,7 @@ private:
         } // end of loop for cell globI.
 
         if( not(well_local_)){
-            problem_().wellModel().addReseroirSourceTerms(residual_,*jacobian_);
+            problem_().wellModel().addReseroirSourceTerms(diagMatAddress_, residual_,*jacobian_);
         }
         // Boundary terms. Only looping over cells with nontrivial bcs.
         for (const auto& bdyInfo : boundaryInfo_) {
