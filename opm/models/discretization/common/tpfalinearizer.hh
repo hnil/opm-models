@@ -48,7 +48,13 @@
 #include <set>
 #include <exception>   // current_exception, rethrow_exception
 #include <mutex>
-
+namespace Opm::Properties {
+    template<class TypeTag, class MyTypeTag>
+    struct AssembleWellLocal {
+        using type = bool;
+        static constexpr type value = true;
+    };
+}
 
 namespace Opm {
 // forward declarations
@@ -108,6 +114,7 @@ public:
         : jacobian_()
     {
         simulatorPtr_ = 0;
+        well_local_ = EWOMS_GET_PARAM(TypeTag, bool, AssembleWellLocal);
     }
 
     ~TpfaLinearizer()
@@ -118,7 +125,9 @@ public:
      * \brief Register all run-time parameters for the Jacobian linearizer.
      */
     static void registerParameters()
-    { }
+    {
+        EWOMS_REGISTER_PARAM(TypeTag, bool, AssembleWellLocal, "assemble well locally");
+    }
 
     /*!
      * \brief Initialize the linearizer.
@@ -424,7 +433,7 @@ public:
 private:
     void linearize_()
     {
-        const bool well_local = true;
+        
         resetSystem_();
         unsigned numCells = model_().numTotalDof();
 #ifdef _OPENMP
@@ -488,7 +497,7 @@ private:
             //jacobian_->addToBlock(globI, globI, bMat);
             *diagMatAddress_[globI] += bMat;
             // wells sources for now (should be moved out)
-            if (well_local) {
+            if (well_local_) {
                 res = 0.0;
                 bMat = 0.0;
                 adres = 0.0;
@@ -501,6 +510,9 @@ private:
             }
         } // end of loop for cell globI.
 
+        if( not(well_local_)){
+            problem_().wellModel().addReseroirSourceTerms(residual_,*jacobian_);
+        }
         // Boundary terms. Only looping over cells with nontrivial bcs.
         for (const auto& bdyInfo : boundaryInfo_) {
             VectorBlock res(0.0);
@@ -580,6 +592,7 @@ private:
         BoundaryConditionData bcdata;
     };
     std::vector<BoundaryInfo> boundaryInfo_;
+    bool well_local_;
 };
 
 } // namespace Opm
