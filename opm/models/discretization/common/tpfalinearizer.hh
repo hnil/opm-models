@@ -426,24 +426,24 @@ public:
                 // with regard to the focus variable 'pvIdx' of the degree of freedom
                 // 'focusDofIdx'
                 bMat[eqIdx][pvIdx] = resid[eqIdx].derivative(pvIdx);
-            }
+       }
         }
     }
-    void addToResAndJacobi(VectorBlock& res, MatrixBlock& bMat, const ADVectorBlock& resid) const
-    {
-        for (unsigned eqIdx = 0; eqIdx < numEq; eqIdx++)
-            res[eqIdx] += resid[eqIdx].value();
+    // void addToResAndJacobi(VectorBlock& res, MatrixBlock& bMat, const ADVectorBlock& resid) const
+    // {
+    //     for (unsigned eqIdx = 0; eqIdx < numEq; eqIdx++)
+    //         res[eqIdx] += resid[eqIdx].value();
 
-        for (unsigned eqIdx = 0; eqIdx < numEq; eqIdx++) {
-            for (unsigned pvIdx = 0; pvIdx < numEq; pvIdx++) {
-                // A[dofIdx][focusDofIdx][eqIdx][pvIdx] is the partial derivative of
-                // the residual function 'eqIdx' for the degree of freedom 'dofIdx'
-                // with regard to the focus variable 'pvIdx' of the degree of freedom
-                // 'focusDofIdx'
-                bMat[eqIdx][pvIdx] += resid[eqIdx].derivative(pvIdx);
-            }
-        }
-    }
+    //     for (unsigned eqIdx = 0; eqIdx < numEq; eqIdx++) {
+    //         for (unsigned pvIdx = 0; pvIdx < numEq; pvIdx++) {
+    //             // A[dofIdx][focusDofIdx][eqIdx][pvIdx] is the partial derivative of
+    //             // the residual function 'eqIdx' for the degree of freedom 'dofIdx'
+    //             // with regard to the focus variable 'pvIdx' of the degree of freedom
+    //             // 'focusDofIdx'
+    //             bMat[eqIdx][pvIdx] += resid[eqIdx].derivative(pvIdx);
+    //         }
+    //     }
+    // }
 
 private:
     void linearize_()
@@ -459,25 +459,27 @@ private:
             VectorBlock res;//(0.0);
             MatrixBlock bMat;//(0.0);
             ADVectorBlock adres;//(0.0);
-            const IntensiveQuantities* intQuantsInP = model_().cachedIntensiveQuantities(globI, /*timeIdx*/ 0);
+            //const IntensiveQuantities* intQuantsInP = model_().cachedIntensiveQuantities(globI, /*timeIdx*/ 0);
             // if (intQuantsInP == nullptr) {
             //     throw std::logic_error("Missing updated intensive quantities for cell " + std::to_string(globI));
             // }
-            const IntensiveQuantities& intQuantsIn = *intQuantsInP;
+            //const IntensiveQuantities& intQuantsIn = *intQuantsInP;
+            const IntensiveQuantities& intQuantsIn = *model_().cachedIntensiveQuantities(globI, /*timeIdx*/ 0);
 
             // Flux term.
-            short loc = 0;
+            //short loc = 0;
             for (const auto& nbInfo : nbInfos) {
                 unsigned globJ = nbInfo.neighbor;
                 //assert(globJ != globI);
                 //res = 0.0;
                 //bMat = 0.0;
                 //adres = 0.0;
-                const IntensiveQuantities* intQuantsExP = model_().cachedIntensiveQuantities(globJ, /*timeIdx*/ 0);
+                //const IntensiveQuantities* intQuantsExP = model_().cachedIntensiveQuantities(globJ, /*timeIdx*/ 0);
                 // if (intQuantsExP == nullptr) {
                 //     throw std::logic_error("Missing updated intensive quantities for cell " + std::to_string(globJ) + " when assembling fluxes for cell " + std::to_string(globI));
                 // }
-                const IntensiveQuantities& intQuantsEx = *intQuantsExP;
+                //const IntensiveQuantities& intQuantsEx = *intQuantsExP;
+                const IntensiveQuantities& intQuantsEx = *model_().cachedIntensiveQuantities(globJ, /*timeIdx*/ 0);
                 LocalResidual::computeFlux(
                        adres, problem_(), globI, globJ, intQuantsIn, intQuantsEx,
                            nbInfo.trans, nbInfo.faceArea, nbInfo.faceDirection);
@@ -489,14 +491,14 @@ private:
                 //bMat *= -1.0;
                 //jacobian_->addToBlock(globJ, globI, bMat);
                 *nbInfo.matAddress -= bMat;
-                ++loc;
+                // ++loc;
             }
 
             // Accumulation term.
             double dt = simulator_().timeStepSize();
             double volume = model_().dofTotalVolume(globI);
             Scalar storefac = volume / dt;
-            adres = 0.0;
+            //adres = 0.0;
             LocalResidual::computeStorage(adres, intQuantsIn);
             setResAndJacobi(res, bMat, adres);
             // TODO: check recycleFirst etc.
