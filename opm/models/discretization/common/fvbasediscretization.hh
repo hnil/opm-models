@@ -410,6 +410,7 @@ class FvBaseDiscretization
     // adaptation classes
     using AdaptationManager = Dune::Fem::AdaptationManager<Grid, RestrictProlong  >;
 #else
+    using Problem = GetPropType<TypeTag, Properties::Problem>;
     using DiscreteFunction = BlockVectorWrapper ;
     using DiscreteFunctionSpace = size_t             ;
 #endif
@@ -758,6 +759,31 @@ public:
         }
     }
 
+   void invalidateAndUpdateIntensiveQuantitiesSimple(const Problem& problem,
+                                                      const SolutionVector& primaryVars,
+                                                      unsigned timeIdx) const
+    {
+        //invalidateIntensiveQuantitiesCache(timeIdx);
+        size_t numGridDof = primaryVars.size();
+        //     omp_sched_t kind;
+        // int chunk;
+          //omp_get_schedule(&kind, &chunk);
+          //printf("%d %d\n", kind, chunk);
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif                
+        for (unsigned dofIdx = 0; dofIdx < numGridDof; ++dofIdx) {
+            const auto& primaryVar = primaryVars[dofIdx];
+            auto& intquant = intensiveQuantityCache_[timeIdx][dofIdx];
+            intquant.update(problem, primaryVar, dofIdx, timeIdx);
+        }
+        
+        std::fill(intensiveQuantityCacheUpToDate_[timeIdx].begin(),
+                      intensiveQuantityCacheUpToDate_[timeIdx].end(),
+                  /*value=*/true);
+        // loop over all elements...
+        
+    } 
     void invalidateAndUpdateIntensiveQuantities(unsigned timeIdx) const
     {
         invalidateIntensiveQuantitiesCache(timeIdx);
