@@ -356,7 +356,7 @@ private:
                         if (materialLawManager->hasDirectionalRelperms()) {
                             dirId = scvf.faceDirFromDirId();
                         }
-                        loc_nbinfo[dofIdx - 1] = NeighborInfo{neighborIdx, trans, area, dirId, nullptr};
+                        loc_nbinfo[dofIdx - 1] = NeighborInfo{neighborIdx, trans, area, dirId, nullptr,nullptr};
                     }
                 }
                 neighborInfo_.appendRow(loc_nbinfo.begin(), loc_nbinfo.end());
@@ -401,6 +401,7 @@ private:
             diagMatAddress_[globI] = jacobian_->blockAddress(globI,globI);           
             for (auto& nbInfo : nbInfos) {
                 nbInfo.matAddress = jacobian_->blockAddress(nbInfo.neighbor,globI);
+                nbInfo.matAddress2 = jacobian_->blockAddress(globI,nbInfo.neighbor);
             }
         }
     }
@@ -470,6 +471,7 @@ private:
             //short loc = 0;
             for (const auto& nbInfo : nbInfos) {
                 unsigned globJ = nbInfo.neighbor;
+                if(globI < globJ){
                 //assert(globJ != globI);
                 //res = 0.0;
                 //bMat = 0.0;
@@ -492,6 +494,21 @@ private:
                 //jacobian_->addToBlock(globJ, globI, bMat);
                 *nbInfo.matAddress -= bMat;
                 // ++loc;
+
+                // compute other fluxderivatives
+                LocalResidual::computeFlux(
+                       adres, problem_(), globJ, globI, intQuantsEx, intQuantsIn,
+                           nbInfo.trans, nbInfo.faceArea, nbInfo.faceDirection);
+                adres *= nbInfo.faceArea;
+                setResAndJacobi(res, bMat, adres);
+                residual_[globJ] += res;
+                //jacobian_->addToBlock(globI, globI, bMat);
+                *diagMatAddress_[globJ] += bMat;
+                //bMat *= -1.0;
+                //jacobian_->addToBlock(globJ, globI, bMat);
+                *nbInfo.matAddress2 -= bMat;
+                // ++loc;
+                }
             }
 
             // Accumulation term.
@@ -588,6 +605,7 @@ private:
         double faceArea;
         FaceDir::DirEnum faceDirection;
         MatrixBlock* matAddress;
+        MatrixBlock* matAddress2;
     };
     SparseTable<NeighborInfo> neighborInfo_;
     std::vector<MatrixBlock*> diagMatAddress_;
