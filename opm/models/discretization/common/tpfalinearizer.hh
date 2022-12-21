@@ -319,6 +319,7 @@ private:
     // Construct the BCRS matrix for the Jacobian of the residual function
     void createMatrix_()
     {
+        OPM_TIME_BLOCK(CreateMatrix);
         if (!neighborInfo_.empty()) {
             // It is ok to call this function multiple times, but it
             // should not do anything if already called.
@@ -449,7 +450,7 @@ public:
 private:
     void linearize_()
     {
-        
+        OPM_TIME_BLOCK(LineariceReservoir);
         resetSystem_();
         unsigned numCells = model_().numTotalDof();
 #ifdef _OPENMP
@@ -469,7 +470,9 @@ private:
 
             // Flux term.
             //short loc = 0;
+            
             for (const auto& nbInfo : nbInfos) {
+                OPM_TIME_BLOCK(LineariceReservoir_FluxCalculation);
                 unsigned globJ = nbInfo.neighbor;
                 if(globI < globJ){
                 //assert(globJ != globI);
@@ -516,8 +519,11 @@ private:
             double volume = model_().dofTotalVolume(globI);
             Scalar storefac = volume / dt;
             //adres = 0.0;
+            {
+            OPM_TIME_BLOCK(LineariceReservoir_StorageCalculation);
             LocalResidual::computeStorage(adres, intQuantsIn);
             setResAndJacobi(res, bMat, adres);
+            }
             // TODO: check recycleFirst etc.
             // first we use it as storage cache
             if (model_().newtonMethod().numIterations() == 0) {
@@ -532,6 +538,7 @@ private:
             *diagMatAddress_[globI] += bMat;
             // wells sources for now (should be moved out)
             if (well_local_) {
+                OPM_TIME_BLOCK(LinearizerAddSourceTermsDense);
                 res = 0.0;
                 bMat = 0.0;
                 adres = 0.0;
@@ -545,6 +552,7 @@ private:
         } // end of loop for cell globI.
 
         if( not(well_local_)){
+            OPM_TIME_BLOCK(LinearizerAddSourceTermsSparse);
             problem_().wellModel().addReseroirSourceTerms(diagMatAddress_, residual_,*jacobian_);
         }
         // Boundary terms. Only looping over cells with nontrivial bcs.
