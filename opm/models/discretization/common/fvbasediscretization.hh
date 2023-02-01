@@ -709,6 +709,7 @@ public:
         return &intensiveQuantityCache_[timeIdx][globalIdx];
     }
 
+    
     /*!
      * \brief Update the intensive quantity cache for a entity on the grid at given time.
      *
@@ -783,7 +784,39 @@ public:
                   /*value=*/true);
         // loop over all elements...
         
-    } 
+    }
+
+    template<class WaterPvtT, class OilPvtT,class GasPvtT>
+    void invalidateAndUpdateIntensiveQuantitiesSimple(const Problem& problem,
+                                                      const SolutionVector& primaryVars,
+                                                      unsigned timeIdx,
+                                                      const WaterPvtT& waterpvt,
+                                                      const GasPvtT& gaspvt,
+                                                      const OilPvtT& oilpvt) const
+    {
+        //invalidateIntensiveQuantitiesCache(timeIdx);
+        size_t numGridDof = primaryVars.size();
+        //     omp_sched_t kind;
+        // int chunk;
+          //omp_get_schedule(&kind, &chunk);
+          //printf("%d %d\n", kind, chunk);
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif                
+        for (unsigned dofIdx = 0; dofIdx < numGridDof; ++dofIdx) {
+            const auto& primaryVar = primaryVars[dofIdx];
+            auto& intquant = intensiveQuantityCache_[timeIdx][dofIdx];
+            intquant.update(problem, primaryVar, dofIdx, timeIdx,waterpvt,gaspvt,oilpvt);
+        }
+        
+        std::fill(intensiveQuantityCacheUpToDate_[timeIdx].begin(),
+                      intensiveQuantityCacheUpToDate_[timeIdx].end(),
+                  /*value=*/true);
+        // loop over all elements...
+        
+    }
+    
+    
     void invalidateAndUpdateIntensiveQuantities(unsigned timeIdx) const
     {
         invalidateIntensiveQuantitiesCache(timeIdx);

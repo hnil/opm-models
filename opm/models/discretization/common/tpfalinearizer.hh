@@ -319,7 +319,7 @@ private:
     // Construct the BCRS matrix for the Jacobian of the residual function
     void createMatrix_()
     {
-        OPM_TIME_BLOCK(CreateMatrix);
+        OPM_TIME_BLOCK_MAIN(CreateMatrix);
         if (!neighborInfo_.empty()) {
             // It is ok to call this function multiple times, but it
             // should not do anything if already called.
@@ -450,7 +450,7 @@ public:
 private:
     void linearize_()
     {
-        OPM_TIME_BLOCK(LineariceReservoir);
+        OPM_TIME_BLOCK_MAIN(LineariceReservoir);
         resetSystem_();
         unsigned numCells = model_().numTotalDof();
 #ifdef _OPENMP

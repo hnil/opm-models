@@ -88,6 +88,7 @@ public:
      */
     Evaluation makeEvaluation(unsigned varIdx, unsigned timeIdx, LinearizationType linearizationType = LinearizationType()) const
     {
+        OPM_TIME_BLOCK(makeEvaluation);
         if (std::is_same<Evaluation, Scalar>::value)
             return (*this)[varIdx]; // finite differences
         else {

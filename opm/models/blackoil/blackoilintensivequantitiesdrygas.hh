@@ -168,28 +168,46 @@ public:
         unsigned globalSpaceIdx = elemCtx.globalSpaceIndex(dofIdx, timeIdx);
         this->update(problem,priVars,globalSpaceIdx,timeIdx);
     }
-
     void update(const Problem& problem,
                 const PrimaryVariables& priVars,
                 unsigned globalSpaceIdx,
                 unsigned timeIdx)
     {
-       
+        OPM_TIME_BLOCK(UpdateIntensiveQuantitiesGenneral);
+        const auto& waterpvt = FluidSystem::waterPvt().template getRealPvt<Opm::WaterPvtApproach::ConstantCompressibilityWater>();
+        const auto& gaspvt = FluidSystem::gasPvt().template getRealPvt<Opm::GasPvtApproach::DryGas>();
+        const auto& oilpvt = FluidSystem::oilPvt().template getRealPvt<Opm::OilPvtApproach::LiveOil>();;
+        this->update(problem,priVars, globalSpaceIdx, timeIdx, waterpvt, gaspvt, oilpvt);
+    }
+    
+    template<class WaterPvtT, class OilPvtT,class GasPvtT>
+    void update(const Problem& problem,
+                const PrimaryVariables& priVars,
+                unsigned globalSpaceIdx,
+                unsigned timeIdx,
+                const WaterPvtT& waterpvt,
+                const GasPvtT& gaspvt,
+                const OilPvtT& oilpvt)
+    {
+        OPM_TIME_BLOCK(UpdateIntensiveQuantities);
+        Evaluation T=298.0;
         std::array<bool, numPhases> saturated;
         for(int i=0; i< numPhases; ++i){
             saturated[i] = true;
         }
         std::array<Evaluation, numPhases> viscosity;
-        OPM_TIME_BLOCK(UpdateIntensiveQuantities);
+       
         //const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
-        const auto& linearizationType = problem.model().linearizer().getLinearizationType();
-        Scalar RvMax = FluidSystem::enableVaporizedOil()
-            ? problem.maxOilVaporizationFactor(timeIdx, globalSpaceIdx)
-            : 0.0;
-        Scalar RsMax = FluidSystem::enableDissolvedGas()
-            ? problem.maxGasDissolutionFactor(timeIdx, globalSpaceIdx)
-            : 0.0;
+        const auto& linearizationType = Opm::LinearizationType();//problem.model().linearizer().getLinearizationType();//NB ?? 
+        // Scalar RvMax = FluidSystem::enableVaporizedOil()
+        //     ? problem.maxOilVaporizationFactor(timeIdx, globalSpaceIdx)
+        //     : 0.0;
+        // Scalar RsMax = FluidSystem::enableDissolvedGas()
+        //     ? problem.maxGasDissolutionFactor(timeIdx, globalSpaceIdx)
+        //     : 0.0;
 
+        Scalar RsMax = 1e99;//problem.maxGasDissolutionFactor(timeIdx, globalSpaceIdx);
+        //     : 0.0;
         //asImp_().updateTemperature_(elemCtx, dofIdx, timeIdx);
 
         unsigned pvtRegionIdx = priVars.pvtRegionIndex();
@@ -244,7 +262,7 @@ public:
 
         // now we compute all phase pressures
         
-        std::array<Evaluation, numPhases> pC;// = {0, 0, 0};
+        std::array<Evaluation, numPhases> pC = {0, 0, 0};
         //computeRelpermAndPC(mobility_, pC, problem, fluidState_, globalSpaceIdx);
         //const auto& materialParams = problem.materialLawParams(globalSpaceIdx);                        
         //MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);        
@@ -252,10 +270,18 @@ public:
         //MaterialLaw::capillaryPressures(pC, materialParams, fluidState);
         //MaterialLaw::relativePermeabilities(mobility, materialParams, fluidState);
         //const auto& materialParams = problem.materialLawParams(globalSpaceIdx);
-        const auto& materialParams = problem.materialLawParams(0);
-        const auto& materialParamsReal = materialParams.template getRealParams<Opm::EclMultiplexerApproach::Default>();
-        MaterialLaw::DefaultMaterial::capillaryPressures(pC, materialParamsReal, fluidState_);
-        MaterialLaw::DefaultMaterial::relativePermeabilities(mobility_, materialParamsReal, fluidState_);
+        //const auto& materialParams = problem.materialLawParams(0);
+        {
+            OPM_TIME_BLOCK(RelpermEvaluation);
+            const auto& materialParams = problem.materialLawParams(0).template getRealParams<Opm::EclMultiplexerApproach::Default>();
+            const auto& gasoilparams =materialParams.gasOilParams().drainageParams().effectiveLawParams().template getRealParams<Opm::SatCurveMultiplexerApproach::PiecewiseLinear>();
+            const auto& oilwaterparams =materialParams.oilWaterParams().drainageParams().effectiveLawParams().template getRealParams<Opm::SatCurveMultiplexerApproach::PiecewiseLinear>();
+            Scalar Swco = materialParams.Swl();
+            //MaterialLaw::DefaultMaterial::relativePermeabilitiesNew(mobility_, Swco, oilwaterparams, gasoilparams, fluidState_);
+            //MaterialLaw::DefaultMaterial::relativePermeabilitiesNew(mobility_, materialParams, fluidState_);
+            //MaterialLaw::DefaultMaterial::capillaryPressures(pC, materialParams, fluidState_);
+            MaterialLaw::DefaultMaterial::relativePermeabilitiesNew(mobility_, materialParams, fluidState_);
+        }
         //mobility_[waterPhaseIdx] = Sw;
         //mobility_[oilPhaseIdx] = So;
         //mobility_[gasPhaseIdx] = Sg;
@@ -293,6 +319,7 @@ public:
 
         // take the meaning of the switching primary variable into account for the gas
         // and oil phase compositions
+        size_t segIdx_so;
         if (priVars.primaryVarsMeaningGas() == PrimaryVariables::GasMeaning::Rs) {
             const auto& Rs = priVars.makeEvaluation(Indices::compositionSwitchIdx, timeIdx);
             fluidState_.setRs(Rs);
@@ -300,11 +327,14 @@ public:
         } else {
             if (FluidSystem::enableDissolvedGas()) { // Add So > 0? i.e. if only water set rs = 0)
                 OPM_TIME_BLOCK(UpdateSaturatedRs);
-                const Evaluation& RsSat = enableExtbo ? asImp_().rs() :
-                    FluidSystem::saturatedDissolutionFactor(fluidState_,
-                                                            oilPhaseIdx,
-                                                            pvtRegionIdx,
-                                                            SoMax);
+                const Evaluation& p = fluidState_.pressure(oilPhaseIdx);
+                segIdx_so = oilpvt.saturatedGasDissolutionFactorTable()[pvtRegionIdx].findSegmentIndex_(p,/*extrapolate=*/true);
+                const Evaluation& RsSat = oilpvt.saturatedGasDissolutionFactorTable()[pvtRegionIdx].eval(p, segIdx_so);
+                //const Evaluation& RsSat = enableExtbo ? asImp_().rs() :
+                //   FluidSystem::saturatedDissolutionFactor(fluidState_,
+                //                                           oilPhaseIdx,
+                //                                            pvtRegionIdx,
+                //                                            SoMax);
                 if(RsMax < RsSat){
                     saturated[oilPhaseIdx] = false;
                 }
@@ -315,32 +345,93 @@ public:
                 saturated[oilPhaseIdx] = false;
             }
         }
-
-        if (priVars.primaryVarsMeaningGas() == PrimaryVariables::GasMeaning::Rv) {
-            const auto& Rv = priVars.makeEvaluation(Indices::compositionSwitchIdx, timeIdx);
-            fluidState_.setRv(Rv);
-            saturated[gasPhaseIdx] = false;
-        } else {
-            if (FluidSystem::enableVaporizedOil() ) { // Add Sg > 0? i.e. if only water set rv = 0)
-                OPM_TIME_BLOCK(UpdateSaturatedRv);
-                //NB! should save the indexing for later evalustion
-                const Evaluation& RvSat = enableExtbo ? asImp_().rv() :
-                    FluidSystem::saturatedDissolutionFactor(fluidState_,
-                                                            gasPhaseIdx,
-                                                            pvtRegionIdx,
-                                                            SoMax);
-                if(RvMax < RvSat){
-                    saturated[gasPhaseIdx] = false;
-                }
-                fluidState_.setRv(min(RvMax, RvSat));
-                
-            }
-            else if constexpr (compositionSwitchEnabled){
-                fluidState_.setRv(0.0);
-                saturated[gasPhaseIdx] = false;
-            }
+        //saturated[oilPhaseIdx] = true;
+        if (saturated[oilPhaseIdx]){
+            OPM_TIME_BLOCK(OilSaturatedPvt);
+            const Evaluation& p = fluidState_.pressure(oilPhaseIdx);
+            // exeption from using saturated tables
+            //size_t segIdx = oilpvt.inverseSaturatedOilBTable()[pvtRegionIdx].findSegmentIndex_(p,/*extrapolate=*/true);
+            size_t segIdx = segIdx_so;
+            Evaluation b  =oilpvt.inverseSaturatedOilBTable()[pvtRegionIdx].eval(p, segIdx);
+            //Evaluation b = oilpvt.saturatedInverseFormationVolumeFactor(pvtRegionIdx, T, p);
+            //Evaluation mu = oilpvt.saturatedViscosity(pvtRegionIdx, T, p);
+            //Evaluation invBMu = oilpvt.inverseSaturatedOilBMuTable()[pvtRegionIdx].eval(p, /*extrapolate=*/true);
+            Evaluation invBMu = oilpvt.inverseSaturatedOilBMuTable()[pvtRegionIdx].eval(p,segIdx);
+            Evaluation mu = b/invBMu;
+            fluidState_.setInvB(oilPhaseIdx, b);
+            viscosity[oilPhaseIdx] =mu;          
+        }else{
+            OPM_TIME_BLOCK(OilUnSaturatedPvt);
+            const Evaluation& p = fluidState_.pressure(oilPhaseIdx);
+            const Evaluation& Rs = fluidState_.Rs();
+            //Evaluation b = oilpvt.inverseFormationVolumeFactor(pvtRegionIdx, T, p,Rs);//??
+            unsigned ii,j1,j2;
+            Evaluation alpha, beta1, beta2;          
+            //Evaluation b = oilpvt.inverseOilBTable()[pvtRegionIdx].eval(Rs,p,/*extrapolate*/true);
+            oilpvt.inverseOilBTable()[pvtRegionIdx].findPoints(ii,j1,j2,alpha, beta1,beta2,Rs,p,/*extrapolate*/true);
+            Evaluation b = oilpvt.inverseOilBTable()[pvtRegionIdx].eval(ii,j1,j2,alpha, beta1,beta2,Rs,p,/*extrapolate*/true);
+            //Evaluation mu = oilpvt.viscosity(pvtRegionIdx, T, p, Rs);
+            //Evaluation invBMu = oilpvt.inverseOilBMuTable()[pvtRegionIdx].eval(Rs, p, /*extrapolate=*/true);
+            Evaluation invBMu = oilpvt.inverseOilBMuTable()[pvtRegionIdx].eval(ii,j1,j2,alpha, beta1,beta2,Rs,p,/*extrapolate*/true);
+            Evaluation mu = b/invBMu;
+            fluidState_.setInvB(oilPhaseIdx, b);
+            viscosity[oilPhaseIdx] = mu; 
         }
+        
+        // if (priVars.primaryVarsMeaningGas() == PrimaryVariables::GasMeaning::Rv) {
+        //     const auto& Rv = priVars.makeEvaluation(Indices::compositionSwitchIdx, timeIdx);
+        //     fluidState_.setRv(Rv);
+        //     saturated[gasPhaseIdx] = false;
+        // } else {
+        //     if (FluidSystem::enableVaporizedOil() ) { // Add Sg > 0? i.e. if only water set rv = 0)
+        //         OPM_TIME_BLOCK(UpdateSaturatedRv);
+        //         //NB! should save the indexing for later evalustion
+        //         const Evaluation& RvSat = enableExtbo ? asImp_().rv() :
+        //             FluidSystem::saturatedDissolutionFactor(fluidState_,
+        //                                                     gasPhaseIdx,
+        //                                                     pvtRegionIdx,
+        //                                                     SoMax);
+        //         if(RvMax < RvSat){
+        //             saturated[gasPhaseIdx] = false;
+        //         }
+        //         fluidState_.setRv(min(RvMax, RvSat));
+                
+        //     }
+        //     else if constexpr (compositionSwitchEnabled){
+        //         fluidState_.setRv(0.0);
+        //         saturated[gasPhaseIdx] = true;
+        //     }
+        // }
+        //if(saturated[gasPhaseIdx]){
+        if(true){
+            OPM_TIME_BLOCK(GasSaturatedPvt);
+            const Evaluation& p = fluidState_.pressure(gasPhaseIdx);
+            // no oil  gas present  and enableVaporized oil
+            size_t segIdx = gaspvt.inverseGasB()[pvtRegionIdx].findSegmentIndex_(p,/*extrapolate=*/true);
+            Evaluation b  =gaspvt.inverseGasB()[pvtRegionIdx].eval(p, segIdx);
+            //Evaluation b = gaspvt.saturatedInverseFormationVolumeFactor(pvtRegionIdx, T, p);
+            //Evaluation mu = gaspvt.saturatedViscosity(pvtRegionIdx, T, p);
+            //Evaluation invBMu = gaspvt.inverseGasBMu()[pvtRegionIdx].eval(p, /*extrapolate=*/true);
+            const Evaluation& invBMu = gaspvt.inverseGasBMu()[pvtRegionIdx].eval(p, segIdx);
+            Evaluation mu = b/invBMu;
+            fluidState_.setInvB(gasPhaseIdx, b);
+            viscosity[gasPhaseIdx] = mu;
+        }else{
+            OPM_TIME_BLOCK(GasUnSaturatedPvt);
+            const Evaluation& p = fluidState_.pressure(gasPhaseIdx);
+            const Evaluation& Rv = fluidState_.Rv();
+            const Evaluation& Rvw = 0.0;
+            Evaluation b = gaspvt.inverseFormationVolumeFactor(pvtRegionIdx, T, p, Rv, Rvw);
+            //Evaluation mu = gaspvt.viscosity(pvtRegionIdx, T, p, Rv, Rvw);
+            Evaluation invBMu = gaspvt.inverseGasBMu()[pvtRegionIdx].eval(p, /*extrapolate=*/true);
+            Evaluation mu = b/invBMu;
+            fluidState_.setInvB(gasPhaseIdx, b);
+            viscosity[gasPhaseIdx] = mu;
+        }
+        
 
+        
+        
         if (priVars.primaryVarsMeaningWater() == PrimaryVariables::WaterMeaning::Rvw) {
             const auto& Rvw = priVars.makeEvaluation(Indices::waterSwitchIdx, timeIdx);
             fluidState_.setRvw(Rvw);
@@ -356,7 +447,7 @@ public:
                 saturated[waterPhaseIdx] = true;
             }
         }
-
+        
         // typename FluidSystem::template ParameterCache<Evaluation> paramCache;
         // paramCache.setRegionIndex(pvtRegionIdx);
         // if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
@@ -379,12 +470,9 @@ public:
         //         continue;
         //     computeInverseFormationVolumeFactorAndViscosity(fluidState_, phaseIdx, pvtRegionIdx, SoMax);            
         // }
-        Evaluation T=298.0;
-        const auto& waterpvt = FluidSystem::waterPvt().template getRealPvt<Opm::WaterPvtApproach::ConstantCompressibilityWater>();
-        const auto& gaspvt = FluidSystem::gasPvt().template getRealPvt<Opm::GasPvtApproach::DryGas>();
-        const auto& oilpvt = FluidSystem::oilPvt().template getRealPvt<Opm::OilPvtApproach::LiveOil>();;
+
         {
-            
+            OPM_TIME_BLOCK(WaterPvt);
             Evaluation salt= 0.0;
             const Evaluation& p = fluidState_.pressure(waterPhaseIdx);
 //            Evaluation b = waterpvt.inverseFormationVolumeFactor(pvtRegionIdx, T, p, salt);
@@ -398,45 +486,8 @@ public:
             viscosity[waterPhaseIdx] = mu;
         }
         
-        if (saturated[oilPhaseIdx]){
-            const Evaluation& p = fluidState_.pressure(oilPhaseIdx);
-            // exeption from using saturated tables
-            Evaluation b = oilpvt.saturatedInverseFormationVolumeFactor(pvtRegionIdx, T, p);
-            //Evaluation mu = oilpvt.saturatedViscosity(pvtRegionIdx, T, p);
-            Evaluation invBMu = oilpvt.inverseSaturatedOilBMuTable()[pvtRegionIdx].eval(p, /*extrapolate=*/true);
-            Evaluation mu = b/invBMu;
-            fluidState_.setInvB(oilPhaseIdx, b);
-            viscosity[oilPhaseIdx] =mu;          
-        }else{
-            const Evaluation& p = fluidState_.pressure(oilPhaseIdx);
-            const Evaluation& Rs = fluidState_.Rs();
-            Evaluation b = oilpvt.inverseFormationVolumeFactor(pvtRegionIdx, T, p,Rs);//??
-            //Evaluation mu = oilpvt.viscosity(pvtRegionIdx, T, p, Rs);
-            Evaluation invBMu = oilpvt.inverseOilBMuTable()[pvtRegionIdx].eval(Rs, p, /*extrapolate=*/true);
-            Evaluation mu = b/invBMu;
-            fluidState_.setInvB(oilPhaseIdx, b);
-            viscosity[oilPhaseIdx] = mu; 
-        }
-        if(saturated[gasPhaseIdx]){
-            const Evaluation& p = fluidState_.pressure(gasPhaseIdx);
-            // no oil  gas present  and enableVaporized oil   
-            Evaluation b = gaspvt.saturatedInverseFormationVolumeFactor(pvtRegionIdx, T, p);
-            //Evaluation mu = gaspvt.saturatedViscosity(pvtRegionIdx, T, p);
-            Evaluation invBMu = gaspvt.inverseGasBMu()[pvtRegionIdx].eval(p, /*extrapolate=*/true);
-            Evaluation mu = b/invBMu;
-            fluidState_.setInvB(gasPhaseIdx, b);
-            viscosity[gasPhaseIdx] = mu;
-        }else{
-            const Evaluation& p = fluidState_.pressure(gasPhaseIdx);
-            const Evaluation& Rv = fluidState_.Rv();
-            const Evaluation& Rvw = 0.0;
-            Evaluation b = gaspvt.inverseFormationVolumeFactor(pvtRegionIdx, T, p, Rv, Rvw);
-            //Evaluation mu = gaspvt.viscosity(pvtRegionIdx, T, p, Rv, Rvw);
-            Evaluation invBMu = gaspvt.inverseGasBMu()[pvtRegionIdx].eval(p, /*extrapolate=*/true);
-            Evaluation mu = b/invBMu;
-            fluidState_.setInvB(gasPhaseIdx, b);
-            viscosity[gasPhaseIdx] = mu;
-        }
+        
+        
         
         
         for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
