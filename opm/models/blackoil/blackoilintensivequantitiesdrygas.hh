@@ -279,8 +279,9 @@ public:
             Scalar Swco = materialParams.Swl();
             //MaterialLaw::DefaultMaterial::relativePermeabilitiesNew(mobility_, Swco, oilwaterparams, gasoilparams, fluidState_);
             //MaterialLaw::DefaultMaterial::relativePermeabilitiesNew(mobility_, materialParams, fluidState_);
-            //MaterialLaw::DefaultMaterial::capillaryPressures(pC, materialParams, fluidState_);
-            MaterialLaw::DefaultMaterial::relativePermeabilitiesNew(mobility_, materialParams, fluidState_);
+            MaterialLaw::DefaultMaterial::capillaryPressures(pC, materialParams, fluidState_);
+            //makMaterialLaw::DefaultMaterial::relativePermeabilitiesNew(mobility_, materialParams, fluidState_);
+            MaterialLaw::DefaultMaterial::relativePermeabilitiesSimple(mobility_, materialParams, fluidState_);
         }
         //mobility_[waterPhaseIdx] = Sw;
         //mobility_[oilPhaseIdx] = So;
