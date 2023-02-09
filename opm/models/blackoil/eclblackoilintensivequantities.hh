@@ -266,12 +266,12 @@ public:
         {
             OPM_TIME_BLOCK_MAIN(RelpermEvaluation);
             // //const auto& materialParams = problem.materialLawParams(0)
-            const auto& materialParams = problem.materialLawParams(globalSpaceIdx).template getRealParams<Opm::EclMultiplexerApproach::Default>();    
-            MaterialLaw::DefaultMaterial::capillaryPressures(pC, materialParams, fluidState_);
-            MaterialLaw::DefaultMaterial::relativePermeabilities(mobility_, materialParams, fluidState_);
-            //const auto& materialParams = problem.materialLawParams(globalSpaceIdx);                        
-            //MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);        
-            //problem.updateRelperms(mobility_, dirMob_, fluidState_, globalSpaceIdx);
+            //const auto& materialParams = problem.materialLawParams(globalSpaceIdx).template getRealParams<Opm::EclMultiplexerApproach::Default>();    
+            // MaterialLaw::DefaultMaterial::capillaryPressures(pC, materialParams, fluidState_);
+            // MaterialLaw::DefaultMaterial::relativePermeabilities(mobility_, materialParams, fluidState_);
+            const auto& materialParams = problem.materialLawParams(globalSpaceIdx);                        
+            MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);        
+            problem.updateRelperms(mobility_, dirMob_, fluidState_, globalSpaceIdx);
         }
         // oil is the reference phase for pressure
         if (priVars.primaryVarsMeaningPressure() == PrimaryVariables::PressureMeaning::Pg) {
@@ -318,11 +318,22 @@ public:
                 OPM_TIME_BLOCK(UpdateSaturatedRs);
                 const Evaluation& p = fluidState_.pressure(oilPhaseIdx);
                 segIdx_so = oilpvt.saturatedGasDissolutionFactorTable()[pvtRegionIdx].findSegmentIndex_(p,/*extrapolate=*/true);
-                Evaluation RsSat = oilpvt.saturatedGasDissolutionFactorTable()[pvtRegionIdx].eval(p, segIdx_so);
+                
+                Evaluation RsSat_max = oilpvt.saturatedGasDissolutionFactorTable()[pvtRegionIdx].eval(p, segIdx_so);
+                Evaluation RsSat = RsSat_max;
+                Evaluation maxOilSaturation = min(SoMax, Scalar(1.0));
+                Scalar vapPar2 = oilpvt.vapPar2();
+                if (vapPar2 > 0.0 && maxOilSaturation > 0.01 && So < maxOilSaturation) {
+                    constexpr const Scalar eps = 0.001;
+                    const Evaluation& So = max(So, eps);
+                    RsSat *= max(1e-3, pow(So/maxOilSaturation, vapPar2));
+                }
+
                 RsSat = enableExtbo ? asImp_().rs() : RsSat;
-                if(RsMax < RsSat){
+                if(RsMax < RsSat_max){
                     saturated[oilPhaseIdx] = false;
                 }
+                //RsSat = enableExtbo ? asImp_().rs() :FluidSystem::saturatedDissolutionFactor(fluidState_,oilPhaseIdx, pvtRegionIdx,SoMax);
                 fluidState_.setRs(min(RsMax, RsSat));
             }
             else if constexpr (compositionSwitchEnabled){
@@ -370,12 +381,23 @@ public:
                 //NB! should save the indexing for later evalustion
                 const Evaluation& p = fluidState_.pressure(gasPhaseIdx);
                 segIdx_g = gaspvt.saturatedOilVaporizationFactorTable()[pvtRegionIdx].findSegmentIndex_(p,/*extrapolate=*/true);
-                Evaluation RvSat = gaspvt.saturatedOilVaporizationFactorTable()[pvtRegionIdx].eval(p, segIdx_g);
-                RvSat = enableExtbo ? asImp_().rv() : RvSat;
-                
-                if(RvMax < RvSat){
+                Evaluation RvSat_max = gaspvt.saturatedOilVaporizationFactorTable()[pvtRegionIdx].eval(p, segIdx_g);
+                Evaluation RvSat = RvSat_max;
+                Evaluation maxOilSaturation = min(SoMax, Scalar(1.0));
+                Scalar vapPar1 = gaspvt.vapPar1();
+                if (vapPar1 > 0.0 && maxOilSaturation > 0.01 && So < maxOilSaturation) {
+                    constexpr const Scalar eps = 0.001;
+                    const Evaluation& So = max(So, eps);
+                    RvSat *= max(1e-3, pow(So/maxOilSaturation, vapPar1));
+                }
+
+                RvSat = enableExtbo ? asImp_().rv() : RvSat;               
+                if(RvSat < RvSat_max){
                     saturated[gasPhaseIdx] = false;
                 }
+                // hack do not undersand the difference
+                //RvSat = enableExtbo ? asImp_().rv() :FluidSystem::saturatedDissolutionFactor(fluidState_,gasPhaseIdx,pvtRegionIdx,SoMax);
+                
                 fluidState_.setRv(min(RvMax, RvSat));                
             }
             else if constexpr (compositionSwitchEnabled){
@@ -442,8 +464,10 @@ public:
                 continue;
             mobility_[phaseIdx] /= viscosity[phaseIdx];
         }
-        
+
+      
         }
+        
         Valgrind::CheckDefined(mobility_);
         
         // calculate the phase densities
@@ -623,7 +647,7 @@ public:
             //         (*mobilities[i])[phaseIdx] /= mu;
             //     }
             // }
-            //mobility_[phaseIdx] /=mu;
+            mobility_[phaseIdx] /=mu;
         }
         //mobility_[phaseIdx] /= 1e-3;
     }
