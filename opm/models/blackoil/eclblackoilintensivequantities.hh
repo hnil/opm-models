@@ -173,7 +173,7 @@ public:
                 unsigned globalSpaceIdx,
                 unsigned timeIdx)
     {
-        OPM_TIME_BLOCK_MAIN(UpdateIntensiveQuantitiesGenneral);
+        OPM_TIME_BLOCK(UpdateIntensiveQuantitiesGenneral);
         const auto& waterpvt = FluidSystem::waterPvt().template getRealPvt<Opm::WaterPvtApproach::ConstantCompressibilityWater>();
         const auto& gaspvt = FluidSystem::gasPvt().template getRealPvt<Opm::GasPvtApproach::WetGas>();
         const auto& oilpvt = FluidSystem::oilPvt().template getRealPvt<Opm::OilPvtApproach::LiveOil>();;
@@ -264,7 +264,7 @@ public:
         
         std::array<Evaluation, numPhases> pC = {0, 0, 0};
         {
-            OPM_TIME_BLOCK_MAIN(RelpermEvaluation);
+            OPM_TIME_BLOCK(RelpermEvaluation);
             // //const auto& materialParams = problem.materialLawParams(0)
             //const auto& materialParams = problem.materialLawParams(globalSpaceIdx).template getRealParams<Opm::EclMultiplexerApproach::Default>();    
             // MaterialLaw::DefaultMaterial::capillaryPressures(pC, materialParams, fluidState_);
@@ -299,7 +299,7 @@ public:
         //asImp_().zFractionUpdate_(elemCtx, dofIdx, timeIdx);
 
         {
-         OPM_TIME_BLOCK_MAIN(AllPVTVistosity);   
+         OPM_TIME_BLOCK(AllPVTVistosity);   
         Evaluation SoMax = 0.0;
         if (FluidSystem::phaseIsActive(FluidSystem::oilPhaseIdx)) {
             SoMax = max(fluidState_.saturation(oilPhaseIdx),
@@ -325,8 +325,8 @@ public:
                 Scalar vapPar2 = oilpvt.vapPar2();
                 if (vapPar2 > 0.0 && maxOilSaturation > 0.01 && So < maxOilSaturation) {
                     constexpr const Scalar eps = 0.001;
-                    const Evaluation& So = max(So, eps);
-                    RsSat *= max(1e-3, pow(So/maxOilSaturation, vapPar2));
+                    const Evaluation& So_tmp = max(So, eps);
+                    RsSat *= max(1e-3, pow(So_tmp/maxOilSaturation, vapPar2));
                 }
 
                 RsSat = enableExtbo ? asImp_().rs() : RsSat;
@@ -387,8 +387,8 @@ public:
                 Scalar vapPar1 = gaspvt.vapPar1();
                 if (vapPar1 > 0.0 && maxOilSaturation > 0.01 && So < maxOilSaturation) {
                     constexpr const Scalar eps = 0.001;
-                    const Evaluation& So = max(So, eps);
-                    RvSat *= max(1e-3, pow(So/maxOilSaturation, vapPar1));
+                    const Evaluation& So_tmp = max(So, eps);
+                    RvSat *= max(1e-3, pow(So_tmp/maxOilSaturation, vapPar1));
                 }
 
                 RvSat = enableExtbo ? asImp_().rv() : RvSat;               
