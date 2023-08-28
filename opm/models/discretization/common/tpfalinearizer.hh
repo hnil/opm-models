@@ -447,8 +447,8 @@ private:
                         Scalar zEx = problem_().dofCenterDepth(neighborIdx);
                         Scalar dZg = (zIn - zEx)*gravity;
                         Scalar thpres = problem_().thresholdPressure(myIdx, neighborIdx);
-                        Scalar inAlpha;
-                        Scalar outAlpha;
+                        Scalar inAlpha {0.};
+                        Scalar outAlpha {0.};
                         if constexpr(enableEnergy){
                             inAlpha = problem_().thermalHalfTransmissibility(myIdx, neighborIdx);
                             outAlpha = problem_().thermalHalfTransmissibility(neighborIdx, myIdx);

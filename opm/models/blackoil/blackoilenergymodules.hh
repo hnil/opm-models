@@ -217,7 +217,6 @@ public:
     template <class UpEval, class Eval, class FluidState>
     static void addPhaseEnthalpyFluxes_(RateVector& flux,
                                         unsigned phaseIdx,
-                                        unsigned pvtRegionIdx,
                                         const Eval& volumeFlux,
                                         const FluidState& upFs)
     {
@@ -239,10 +238,8 @@ public:
         const auto& up = elemCtx.intensiveQuantities(upIdx, timeIdx);
         const auto& fs = up.fluidState();
         const auto& volFlux = extQuants.volumeFlux(phaseIdx);
-        const unsigned dummyPVTReg = 0;
         addPhaseEnthalpyFluxes_<UpstreamEval>(flux,
                                               phaseIdx,
-                                              dummyPVTReg,
                                               volFlux,
                                               fs);
     }
@@ -579,17 +576,12 @@ public:
         else
             exLambda = decay<Scalar>(exIq.totalThermalConductivity());
 
-        //auto distVec = elemCtx.pos(exIdx, timeIdx);
-        //distVec -= elemCtx.pos(inIdx, timeIdx);
-
         Evaluation H;
         if (inLambda > 0.0 && exLambda > 0.0) {
             // compute the "thermal transmissibility". In contrast to the normal
             // transmissibility this cannot be done as a preprocessing step because the
-            // average thermal thermal conductivity is analogous to the permeability but
+            // average thermal conductivity is analogous to the permeability but
             // depends on the solution.
-            //Scalar inAlpha = elemCtx.problem().thermalHalfTransmissibilityIn(elemCtx, scvfIdx, timeIdx);
-            //Scalar outAlpha = elemCtx.problem().thermalHalfTransmissibilityOut(elemCtx, scvfIdx, timeIdx);
             const Evaluation& inH = inLambda*inAlpha;
             const Evaluation& exH = exLambda*outAlpha;
             H = 1.0/(1.0/inH + 1.0/exH);
@@ -642,7 +634,7 @@ public:
         const auto& inIq = ctx.intensiveQuantities(inIdx, timeIdx);
         const auto& focusDofIdx = ctx.focusDofIndex();
         Scalar alpha = ctx.problem().thermalHalfTransmissibilityBoundary(ctx, scvfIdx);
-        updateEnergyBoundary(energyFlux_, inIq, focusDofIdx, inIdx, timeIdx, alpha, boundaryFs);
+        updateEnergyBoundary(energyFlux_, inIq, focusDofIdx, inIdx, alpha, boundaryFs);
     }
 
     template <class BoundaryFluidState>
@@ -650,7 +642,6 @@ public:
                                      const IntensiveQuantities& inIq,
                                      unsigned focusDofIndex,
                                      unsigned inIdx,
-                                     unsigned timeIdx,
                                      Scalar alpha,
                                      const BoundaryFluidState& boundaryFs)
     {

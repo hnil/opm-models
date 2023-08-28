@@ -392,7 +392,7 @@ public:
                     flux, phaseIdx, pvtRegionIdx, surfaceVolumeFlux, up.fluidState());
                 if constexpr (enableEnergy) {
                     EnergyModule::template addPhaseEnthalpyFluxes_<Evaluation, Evaluation, FluidState>(
-                        flux, phaseIdx, pvtRegionIdx, darcyFlux, up.fluidState());
+                        flux, phaseIdx, darcyFlux, up.fluidState());
                 }
             } else {
                 const auto& invB = getInvB_<FluidSystem, FluidState, Scalar>(up.fluidState(), phaseIdx, pvtRegionIdx);
@@ -402,7 +402,7 @@ public:
                 if constexpr (enableEnergy) {
                     EnergyModule::template
                         addPhaseEnthalpyFluxes_<Scalar, Evaluation, FluidState>
-                        (flux,phaseIdx,pvtRegionIdx, darcyFlux, up.fluidState());
+                        (flux,phaseIdx,darcyFlux, up.fluidState());
                 }
             }
 
@@ -538,7 +538,7 @@ public:
                 if constexpr (enableEnergy) {
                     EnergyModule::template
                         addPhaseEnthalpyFluxes_<Evaluation, Evaluation, FluidState>
-                        (tmp, phaseIdx, insideIntQuants.pvtRegionIndex(), darcyFlux, insideIntQuants.fluidState());
+                        (tmp, phaseIdx, darcyFlux, insideIntQuants.fluidState());
                 }
             } else if (pBoundary > pInside) {
                 // influx
@@ -555,7 +555,6 @@ public:
                         addPhaseEnthalpyFluxes_<Scalar, Evaluation, ScalarFluidState>
                         (tmp,
                          phaseIdx,
-                         insideIntQuants.pvtRegionIndex(),
                          darcyFlux,
                          bdyInfo.exFluidState);
                 }
@@ -580,7 +579,6 @@ public:
                                                                              insideIntQuants,
                                                                              /*focusDofIndex*/ inIdx,
                                                                              inIdx,
-                                                                             /*timeIdx*/ 0,
                                                                              alpha,
                                                                              bdyInfo.exFluidState);
         }
