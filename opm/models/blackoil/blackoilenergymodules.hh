@@ -32,6 +32,7 @@
 #include <opm/models/io/vtkblackoilenergymodule.hh>
 #include <opm/models/common/quantitycallbacks.hh>
 #include <opm/models/discretization/common/linearizationtype.hh>
+
 #include <opm/material/common/Tabulated1DFunction.hpp>
 
 #include <opm/material/common/Valgrind.hpp>
@@ -191,19 +192,8 @@ public:
         }
     }
 
-    static void addHeatFlux([[maybe_unused]] RateVector& flux,
-                            [[maybe_unused]] const ElementContext& elemCtx,
-                            [[maybe_unused]] unsigned scvfIdx,
-                            [[maybe_unused]] unsigned timeIdx)
-    {
-        if constexpr (enableEnergy) {
-            const auto& extQuants = elemCtx.extensiveQuantities(scvfIdx, timeIdx);
-            addHeatFlux(flux, extQuants.energyFlux());
-        }
-    }
-
-    static void addHeatFlux([[maybe_unused]] RateVector& flux,
-                            [[maybe_unused]] const Evaluation& heatFlux)
+    static void addHeatFlux(RateVector& flux,
+                            const Evaluation& heatFlux)
     {
         if constexpr (enableEnergy) {
             // diffusive energy flux

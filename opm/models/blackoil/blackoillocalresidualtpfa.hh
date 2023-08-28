@@ -203,16 +203,6 @@ public:
      * one main difference: The darcy flux is calculated here, not
      * read from the extensive quantities of the element context.
      */
-    // static void computeFlux(RateVector& flux,
-    //                         RateVector& darcy,
-    //                         const Problem& problem,
-    //                         const unsigned globalIndexIn,
-    //                         const unsigned globalIndexEx,
-    //                         const IntensiveQuantities& intQuantsIn,
-    //                         const IntensiveQuantities& intQuantsEx,
-    //                         const Scalar trans,
-    //                         const Scalar faceArea,
-    //                         const FaceDir::DirEnum facedir)
     template<class NaboInfo>
     static void computeFlux(RateVector& flux,
                             RateVector& darcy,
@@ -421,7 +411,6 @@ public:
         // PolymerModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
 
         // deal with energy (if present)
-        //static_assert(!enableEnergy, "Relevant computeFlux() method must be implemented for this module before enabling.");
         if constexpr(enableEnergy){
             Evaluation heatFlux;
             {
@@ -443,7 +432,7 @@ public:
             }
             EnergyModule::addHeatFlux(flux, heatFlux);
         }
-        //NB need to be tha laste energy call since it does scaling
+        // NB need to be tha last energy call since it does scaling
         // EnergyModule::computeFlux(flux, elemCtx, scvfIdx, timeIdx);
 
         // deal with foam (if present)
@@ -563,9 +552,6 @@ public:
             for (unsigned i = 0; i < tmp.size(); ++i) {
                 bdyFlux[i] += tmp[i];
             }
-
-            //static_assert(!enableEnergy, "Relevant treatment of boundary conditions must be implemented before enabling.");
-            // Add energy flux treatment per phase here.
         }
 
         // conductive heat flux from boundary
