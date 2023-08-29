@@ -457,7 +457,7 @@ public:
             // even if energy is conserved, the temperature can vary over the spatial
             // domain if the EnableTemperature property is set to true
             auto& fs = asImp_().fluidState_;
-            Scalar T = elemCtx.problem().temperature(elemCtx, dofIdx, timeIdx);
+            const Scalar T = elemCtx.problem().temperature(elemCtx, dofIdx, timeIdx);
             fs.setTemperature(T);
         }
     }
@@ -474,7 +474,7 @@ public:
             auto& fs = asImp_().fluidState_;
             // even if energy is conserved, the temperature can vary over the spatial
             // domain if the EnableTemperature property is set to true
-            Scalar T = problem.temperature(globalDofIdx, timeIdx);
+            const Scalar T = problem.temperature(globalDofIdx, timeIdx);
             fs.setTemperature(T);
         }
     }
@@ -589,15 +589,15 @@ public:
         const auto& stencil = elemCtx.stencil(timeIdx);
         const auto& scvf = stencil.interiorFace(scvfIdx);
 
-        Scalar faceArea = scvf.area();
-        unsigned inIdx = scvf.interiorIndex();
-        unsigned exIdx = scvf.exteriorIndex();
+        const Scalar faceArea = scvf.area();
+        const unsigned inIdx = scvf.interiorIndex();
+        const unsigned exIdx = scvf.exteriorIndex();
         const auto& inIq = elemCtx.intensiveQuantities(inIdx, timeIdx);
         const auto& exIq = elemCtx.intensiveQuantities(exIdx, timeIdx);
         const auto& inFs = inIq.fluidState();
         const auto& exFs = exIq.fluidState();
-        Scalar inAlpha = elemCtx.problem().thermalHalfTransmissibilityIn(elemCtx, scvfIdx, timeIdx);
-        Scalar outAlpha = elemCtx.problem().thermalHalfTransmissibilityOut(elemCtx, scvfIdx, timeIdx);
+        const Scalar inAlpha = elemCtx.problem().thermalHalfTransmissibilityIn(elemCtx, scvfIdx, timeIdx);
+        const Scalar outAlpha = elemCtx.problem().thermalHalfTransmissibilityOut(elemCtx, scvfIdx, timeIdx);
         updateEnergy(energyFlux_,
                      elemCtx.focusDofIndex(),
                      inIdx,
@@ -623,7 +623,7 @@ public:
         unsigned inIdx = scvf.interiorIndex();
         const auto& inIq = ctx.intensiveQuantities(inIdx, timeIdx);
         const auto& focusDofIdx = ctx.focusDofIndex();
-        Scalar alpha = ctx.problem().thermalHalfTransmissibilityBoundary(ctx, scvfIdx);
+        const Scalar alpha = ctx.problem().thermalHalfTransmissibilityBoundary(ctx, scvfIdx);
         updateEnergyBoundary(energyFlux_, inIq, focusDofIdx, inIdx, alpha, boundaryFs);
     }
 

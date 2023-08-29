@@ -106,6 +106,19 @@ class BlackOilLocalResidualTPFA : public GetPropType<TypeTag, Properties::DiscLo
     using Toolbox = MathToolbox<Evaluation>;
 
 public:
+
+    struct LocalNBInfo
+    {
+        double trans;
+        double faceArea;
+        double thpres;
+        double dZg;
+        FaceDir::DirEnum faceDirection;
+        double Vin;
+        double Vex;
+        double inAlpha;
+        double outAlpha;
+    };
     /*!
      * \copydoc FvBaseLocalResidual::computeStorage
      */
@@ -215,21 +228,17 @@ public:
         OPM_TIMEBLOCK_LOCAL(computeFlux);
         flux = 0.0;
         darcy = 0.0;
+        const LocalNBInfo local_nbinfo {nbInfo.trans, nbInfo.faceArea,      nbInfo.thpres,
+                                        nbInfo.dZg,   nbInfo.faceDirection, nbInfo.Vin,
+                                        nbInfo.Vex,   nbInfo.inAlpha,       nbInfo.outAlpha};
+
         calculateFluxes_(flux,
                          darcy,
                          intQuantsIn,
                          intQuantsEx,
-                         nbInfo.Vin,
-                         nbInfo.Vex,
                          globalIndexIn,
                          globalIndexEx,
-                         nbInfo.dZg,
-                         nbInfo.thpres,
-                         nbInfo.trans,
-                         nbInfo.faceArea,
-                         nbInfo.faceDirection,
-                         nbInfo.inAlpha,
-                         nbInfo.outAlpha);
+                         local_nbinfo);
     }
 
     // This function demonstrates compatibility with the ElementContext-based interface.
@@ -287,47 +296,39 @@ public:
         // exterior DOF)
         Scalar distZ = zIn - zEx;
         // for thermal harmonic mean of half trans
-        Scalar inAlpha = problem.thermalHalfTransmissibility(globalIndexIn, globalIndexEx);
-        Scalar outAlpha = problem.thermalHalfTransmissibility(globalIndexEx, globalIndexIn);
+        const Scalar inAlpha = problem.thermalHalfTransmissibility(globalIndexIn, globalIndexEx);
+        const Scalar outAlpha = problem.thermalHalfTransmissibility(globalIndexEx, globalIndexIn);
 
+        const LocalNBInfo localNBInfo {trans, faceArea, thpres, distZ * g, facedir, Vin, Vex, inAlpha, outAlpha};
 
         calculateFluxes_(flux,
                          darcy,
                          intQuantsIn,
                          intQuantsEx,
-                         Vin,
-                         Vex,
                          globalIndexIn,
                          globalIndexEx,
-                         distZ * g,
-                         thpres,
-                         trans,
-                         faceArea,
-                         facedir,
-                         inAlpha,
-                         outAlpha
-            );
+                         localNBInfo);
     }
 
     static void calculateFluxes_(RateVector& flux,
                                  RateVector& darcy,
                                  const IntensiveQuantities& intQuantsIn,
                                  const IntensiveQuantities& intQuantsEx,
-                                 const Scalar& Vin,
-                                 const Scalar& Vex,
                                  const unsigned& globalIndexIn,
                                  const unsigned& globalIndexEx,
-                                 const Scalar& distZg,
-                                 const Scalar& thpres,
-                                 const Scalar& trans,
-                                 const Scalar& faceArea,
-                                 const FaceDir::DirEnum facedir,
-                                 Scalar inAlpha,
-                                 Scalar outAlpha
-
-        )
+                                 const LocalNBInfo& localNBInfo)
     {
         OPM_TIMEBLOCK_LOCAL(calculateFluxes);
+        const Scalar Vin = localNBInfo.Vin;
+        const Scalar Vex = localNBInfo.Vex;
+        const Scalar distZg = localNBInfo.dZg;
+        const Scalar thpres = localNBInfo.thpres;
+        const Scalar trans = localNBInfo.trans;
+        const Scalar faceArea = localNBInfo.faceArea;
+        const FaceDir::DirEnum facedir = localNBInfo.faceDirection;
+        const Scalar inAlpha = localNBInfo.inAlpha;
+        const Scalar outAlpha = localNBInfo.outAlpha;
+
         for (unsigned phaseIdx = 0; phaseIdx < numPhases; ++phaseIdx) {
             if (!FluidSystem::phaseIsActive(phaseIdx))
                 continue;
@@ -346,7 +347,7 @@ public:
                                                              intQuantsEx,
                                                              phaseIdx, // input
                                                              interiorDofIdx, // input
-                                                             exteriorDofIdx, // intput
+                                                             exteriorDofIdx, // input
                                                              Vin,
                                                              Vex,
                                                              globalIndexIn,
@@ -416,7 +417,6 @@ public:
             {
                 short interiorDofIdx = 0; // NB
                 short exteriorDofIdx = 1; // NB
-                // used due to harmonic mean
 
                 EnergyModule::ExtensiveQuantities::template updateEnergy(heatFlux,
                                                                          interiorDofIdx, // focusDofIndex,

@@ -419,7 +419,7 @@ private:
         // freedom of each primary degree of freedom
         using NeighborSet = std::set< unsigned >;
         std::vector<NeighborSet> sparsityPattern(model.numTotalDof());
-        Scalar gravity = problem_().gravity()[dimWorld - 1];
+        const Scalar gravity = problem_().gravity()[dimWorld - 1];
         unsigned numCells = model.numTotalDof();
         neighborInfo_.reserve(numCells, 6 * numCells);
         std::vector<NeighborInfo> loc_nbinfo;
@@ -440,15 +440,15 @@ private:
                         const auto scvfIdx = dofIdx - 1;
                         const auto& scvf = stencil.interiorFace(scvfIdx);
                         const Scalar area = scvf.area();
-                        FaceDirection dirId = FaceDirection::Unknown;
-                        Scalar Vin = problem_().model().dofTotalVolume(myIdx);
-                        Scalar Vex = problem_().model().dofTotalVolume(neighborIdx);
-                        Scalar zIn = problem_().dofCenterDepth(myIdx);
-                        Scalar zEx = problem_().dofCenterDepth(neighborIdx);
-                        Scalar dZg = (zIn - zEx)*gravity;
-                        Scalar thpres = problem_().thresholdPressure(myIdx, neighborIdx);
+                        const Scalar Vin = problem_().model().dofTotalVolume(myIdx);
+                        const Scalar Vex = problem_().model().dofTotalVolume(neighborIdx);
+                        const Scalar zIn = problem_().dofCenterDepth(myIdx);
+                        const Scalar zEx = problem_().dofCenterDepth(neighborIdx);
+                        const Scalar dZg = (zIn - zEx)*gravity;
+                        const Scalar thpres = problem_().thresholdPressure(myIdx, neighborIdx);
                         Scalar inAlpha {0.};
                         Scalar outAlpha {0.};
+                        FaceDirection dirId = FaceDirection::Unknown;
                         if constexpr(enableEnergy){
                             inAlpha = problem_().thermalHalfTransmissibility(myIdx, neighborIdx);
                             outAlpha = problem_().thermalHalfTransmissibility(neighborIdx, myIdx);
