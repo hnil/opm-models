@@ -183,9 +183,7 @@ public:
         const auto& problem = elemCtx.problem();
         const auto& priVars = elemCtx.primaryVars(dofIdx, timeIdx);
         const auto& linearizationType = problem.model().linearizer().getLinearizationType();
-       // unsigned globalSpaceIdx = elemCtx.globalSpaceIndex(dofIdx, timeIdx);
-        const auto&entity = elemCtx.stencil(timeIdx).entity(dofIdx);
-        auto& globalSpaceIdx = problem.container_[entity].preAdaptIndex;       
+        unsigned globalSpaceIdx = elemCtx.globalSpaceIndex(dofIdx, timeIdx);
         Scalar RvMax = FluidSystem::enableVaporizedOil()
             ? problem.maxOilVaporizationFactor(timeIdx, globalSpaceIdx)
             : 0.0;
@@ -256,10 +254,9 @@ public:
 
         // now we compute all phase pressures
         std::array<Evaluation, numPhases> pC;
-        const auto& materialParams = problem.materialLawParams(elemCtx, dofIdx, timeIdx);
-        //const auto& materialParams = problem.materialLawParams(globalSpaceIdx);
+        const auto& materialParams = problem.materialLawParams(globalSpaceIdx);
         MaterialLaw::capillaryPressures(pC, materialParams, fluidState_);
-        problem.updateRelperms(elemCtx,mobility_, dirMob_, fluidState_, dofIdx, timeIdx);
+        problem.updateRelperms(mobility_, dirMob_, fluidState_, globalSpaceIdx);
 
         // scaling the capillary pressure due to salt precipitation 
         if (BrineModule::hasPcfactTables() && priVars.primaryVarsMeaningBrine() == PrimaryVariables::BrineMeaning::Sp) {
